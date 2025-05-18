@@ -1,4 +1,3 @@
-# backend/app/utils/aws.py
 import logging
 import os
 import boto3
@@ -11,14 +10,44 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-
+# Then in the _initialize_clients method, change the endpoint_url:
+def _initialize_clients(self):
+    """Initialize AWS clients"""
+    try:
+        # Check if running locally
+        is_local = os.environ.get('ENVIRONMENT') == 'dev'
+        endpoint_url = 'http://localstack:4566' if is_local else None
+        
+        # Create S3 client
+        self.s3_client = boto3.client(
+            's3',
+            aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID', 'test'),
+            aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY', 'test'),
+            region_name=settings.AWS_REGION,
+            endpoint_url=endpoint_url
+        )
+        
+        # Create DynamoDB client
+        self.dynamodb_client = boto3.resource(
+            'dynamodb',
+            aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID', 'test'),
+            aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY', 'test'),
+            region_name=settings.AWS_REGION,
+            endpoint_url=endpoint_url
+        )
+    except Exception as e:
+        logger.warning(f"Could not initialize AWS clients: {str(e)}")
+        self.s3_client = None
+        self.dynamodb_client = None
+        self.initialized = False
+        return
+    
 class DecimalEncoder(json.JSONEncoder):
     """Helper class to handle Decimal values in JSON serialization"""
     def default(self, o):
         if isinstance(o, Decimal):
             return float(o)
         return super(DecimalEncoder, self).default(o)
-
 
 class AWSClient:
     """AWS client for interacting with AWS services"""
