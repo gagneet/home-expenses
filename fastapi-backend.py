@@ -561,7 +561,7 @@ async def process_statements_task(session_id: str, file_paths: List[str]):
             try:
                 s3_client.upload_file(
                     result_path,
-                    os.environ.get('S3_BUCKET', 'finance-calculator-results'),
+                    os.environ.get('S3_BUCKET', 'home-expenses-results'),
                     f"{session_id}/result.json"
                 )
                 logger.info(f"Uploaded results to S3 for session {session_id}")

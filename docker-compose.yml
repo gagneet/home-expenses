@@ -1,4 +1,3 @@
-# finance-calculator/docker-compose.yml
 version: '3.8'
 
 services:
@@ -26,9 +25,10 @@ services:
       - "8000:8000"
     environment:
       - ENVIRONMENT=dev
+      - CORS_ORIGINS=http://localhost:3000
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - CORS_ORIGINS=http://localhost:3000
+      - AWS_REGION=us-east-1
     depends_on:
       - localstack
 
@@ -40,9 +40,10 @@ services:
       - SERVICES=s3,dynamodb,lambda
       - DEBUG=1
       - DATA_DIR=/tmp/localstack/data
+      - DOCKER_HOST=unix:///var/run/docker.sock
     volumes:
       - ./localstack-init:/docker-entrypoint-initaws.d
       - localstack-data:/tmp/localstack/data
-
+      - /var/run/docker.sock:/var/run/docker.sock
 volumes:
   localstack-data:

@@ -5,7 +5,7 @@ provider "aws" {
 
 # S3 Bucket for Frontend
 resource "aws_s3_bucket" "frontend" {
-  bucket = "finance-calculator-frontend"
+  bucket = "home-expenses-frontend"
   
   # Prevent public access
   block_public_acls       = true
@@ -16,7 +16,7 @@ resource "aws_s3_bucket" "frontend" {
 
 # S3 Bucket for Statement Storage (Encrypted)
 resource "aws_s3_bucket" "statements" {
-  bucket = "finance-calculator-statements"
+  bucket = "home-expenses-statements"
   
   # Enable versioning for audit trail
   versioning {
@@ -95,7 +95,7 @@ resource "aws_dynamodb_table" "results" {
 
 # API Gateway
 resource "aws_apigatewayv2_api" "api" {
-  name          = "finance-calculator-api"
+  name          = "home-expenses-api"
   protocol_type = "HTTP"
 }
 
