@@ -242,6 +242,71 @@ finance-calculator-pdf/
 │   └── tailwind.config.js         # Tailwind CSS configuration
 └── docker-compose.yml             # Docker Compose configuration
 
+```text
+financial-analyzer/
+├── .github/                    # GitHub Actions workflows
+│   └── workflows/
+│       ├── ci.yml
+│       └── deploy.yml
+├── docker/                     # Docker configuration
+│   ├── frontend/
+│   │   └── Dockerfile
+│   └── backend/
+│       └── Dockerfile
+├── terraform/                  # Infrastructure as code
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── modules/
+│       ├── ecs/
+│       ├── s3/
+│       └── security/
+├── frontend/                   # React frontend
+│   ├── public/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── upload/
+│   │   │   ├── dashboard/
+│   │   │   └── reports/
+│   │   ├── services/
+│   │   ├── hooks/
+│   │   ├── types/
+│   │   ├── utils/
+│   │   ├── App.tsx
+│   │   └── index.tsx
+│   ├── package.json
+│   └── tsconfig.json
+└── backend/                    # Node.js backend
+    ├── src/
+    │   ├── api/                # API routes
+    │   │   ├── auth.ts
+    │   │   ├── files.ts
+    │   │   └── reports.ts
+    │   ├── services/           # Business logic
+    │   │   ├── parser/
+    │   │   │   ├── index.ts
+    │   │   │   ├── pdf-parser.ts
+    │   │   │   └── csv-parser.ts
+    │   │   ├── categorizer/
+    │   │   │   ├── index.ts
+    │   │   │   ├── rules-engine.ts
+    │   │   │   └── categories.ts
+    │   │   └── reports/
+    │   │       ├── generator.ts
+    │   │       └── templates.ts
+    │   ├── models/             # Database models
+    │   │   ├── transaction.ts
+    │   │   ├── category.ts
+    │   │   └── user.ts
+    │   ├── config/             # Configuration
+    │   ├── middleware/         # Express middleware
+    │   ├── utils/              # Utility functions
+    │   └── app.ts              # Express application
+    ├── tests/                  # Unit and integration tests
+    ├── package.json
+    └── tsconfig.json
+```
+
 ## Migrating to AWS When Ready
 
 When we're ready to deploy to AWS:

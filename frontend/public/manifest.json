@@ -1,6 +1,6 @@
 {
-  "short_name": "Home Expenses",
-  "name": "Home Expenditure Calculator",
+  "short_name": "React App",
+  "name": "Create React App Sample",
   "icons": [
     {
       "src": "favicon.ico",
