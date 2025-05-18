@@ -103,6 +103,57 @@ We can create a high-level Terraform script outlining the infrastructure needed 
 
 ## Project Structure
 
+### Summary of the Project Structure
+
+#### Backend (Python with FastAPI)
+
+1.	Core Structure: 
+o	app/main.py - Entry point, app configuration
+o	app/core/config.py - Configuration settings
+o	app/core/security.py - API security settings
+
+2.	Services (Business Logic): 
+o	app/services/parser.py - Statement file parsers (Excel, CSV, PDF)
+o	app/services/categorizer.py - Transaction categorization logic
+o	app/services/summarizer.py - Financial summary generation
+o	app/services/processor.py - Main processor orchestrating the workflow
+
+3.	API Layer: 
+o	app/api/endpoints.py - API routes for upload, status checking, etc.
+
+4.	Utilities: 
+o	app/utils/aws.py - AWS integration (S3, DynamoDB)
+
+#### Frontend (React.js)
+
+1.	Components: 
+o	FileUpload.jsx - File upload interface
+o	Charts.jsx - Data visualization components
+o	Summary.jsx - Financial summary display
+o	App.jsx - Main application component
+
+2.	Services: 
+o	api.js - API client for backend communication
+
+#### Infrastructure (Terraform)
+
+1.	Core Configuration: 
+o	main.tf - Provider setup and shared resources
+o	variables.tf - Input variables
+o	outputs.tf - Output values
+
+2.	Resource-specific Modules: 
+o	s3.tf - S3 buckets for frontend, statements, results
+o	lambda.tf - Lambda function configuration
+o	api_gateway.tf - API Gateway setup
+o	dynamodb.tf - DynamoDB tables
+o	security.tf - Security resources (CloudTrail, WAF, Config)
+
+3.	CI/CD Pipeline: 
+o	.github/workflows/ci-cd-pipeline.yml - GitHub Actions workflow with DevSecOps focus
+
+### Diagramatic representation
+
 finance-calculator/
 ├── backend/
 │   ├── app/
@@ -181,3 +232,39 @@ With this setup, our development workflow would be:
 - Testing with real-world data before deploying
 
 The code we've developed will work both locally and in AWS with minimal changes, making the transition smooth when ready to go live.
+
+## Key DevSecOps Security Features
+
+### Infrastructure Security
+
+- Encryption at rest with KMS
+- Network security with WAF
+- Audit logging with CloudTrail
+- Compliance monitoring with AWS Config
+- Secure access control with IAM roles and policies
+- CloudWatch alarms for monitoring and alerting
+
+### CI/CD Pipeline Security
+
+- Code quality checks (linting, formatting)
+- Static code analysis with multiple tools
+- Security scans for dependencies
+- Container security scanning
+- Infrastructure as Code security scanning
+- Automated testing with coverage reporting
+- Production security scanning with OWASP ZAP
+
+### This modular approach ensures
+
+- Maintainability - Each file has a single responsibility
+- Scalability - Easy to add new features or modify existing ones
+- Security - Comprehensive security controls throughout the stack
+- Testability - Easy to write unit tests for individual components
+
+### To deploy this solution to AWS
+
+- Set up GitHub repository and secrets for AWS authentication
+- Run the CI/CD pipeline for initial deployment
+- The pipeline will handle deploying to both development and production environments
+
+The infrastructure follows AWS best practices and implements a comprehensive security posture suitable for handling sensitive financial data.
