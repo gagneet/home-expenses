@@ -53,14 +53,14 @@ For this project, I am using:
 
 ### Frontend
 
-•	React.js with TypeScript (strong typing will help prevent errors in financial calculations)
-•	Tailwind CSS for responsive design
+• React.js with TypeScript (strong typing will help prevent errors in financial calculations)
+• Tailwind CSS for responsive design
 
 ### Backend
 
-•	Python with FastAPI or Flask (excellent for data processing/analysis)
-•	pandas for data manipulation
-•	AWS Lambda for serverless processing of large statement files
+• Python with FastAPI or Flask (excellent for data processing/analysis)
+• pandas for data manipulation
+• AWS Lambda for serverless processing of large statement files
 
 Python is particularly well-suited for this project because:
 
@@ -77,25 +77,25 @@ Let's break this down into logical components:
 
 We'll need to handle different statement formats from multiple banks and credit cards. The recommended technologies are:
 
-•	Creating parsers for each bank's statement format
-•	Using libraries like pandas for Excel files and tabula-py for PDF statements
-•	Implementing a factory pattern to select the appropriate parser based on the uploaded file
+• Creating parsers for each bank's statement format
+• Using libraries like pandas for Excel files and tabula-py for PDF statements
+• Implementing a factory pattern to select the appropriate parser based on the uploaded file
 
 2. Transaction Categorization System
 
 For categorizing transactions into our specified buckets, we can use:
 
-•	Rule-based matching for known merchants and transaction descriptions
-•	Machine learning classification for ambiguous transactions
-•	User feedback system to improve categorization over time
+• Rule-based matching for known merchants and transaction descriptions
+• Machine learning classification for ambiguous transactions
+• User feedback system to improve categorization over time
 
 3. Analysis & Reporting
 
 Once the data is categorized:
 
-•	Calculate income, expenses by category, and summary statistics
-•	Generate visualizations of spending patterns
-•	Provide comparison with previous months/years
+• Calculate income, expenses by category, and summary statistics
+• Generate visualizations of spending patterns
+• Provide comparison with previous months/years
 
 4. AWS Cloud Deployment with Terraform
 
@@ -154,3 +154,30 @@ finance-calculator/
 └── .github/
     └── workflows/
         └── ci-cd.yml             # GitHub Actions workflow
+
+## Migrating to AWS When Ready
+
+When we're ready to deploy to AWS:
+
+- Push the code to a GitHub repository
+- Set up the necessary GitHub Actions secrets for AWS authentication
+- Run the CI/CD pipeline we created to deploy to AWS
+
+### Local Development Workflow
+
+With this setup, our development workflow would be:
+
+- Make changes to the frontend or backend code
+- The Docker containers will automatically reload with our changes
+- Test the application locally with real files
+- When satisfied, commit the changes to GitHub
+- When ready to deploy, push to main branch to trigger the CI/CD pipeline
+
+### This approach gives us the best of both worlds
+
+- Fast, iterative local development with Docker
+- AWS-compatible architecture that can be deployed to the cloud when ready
+- No need for AWS costs during development
+- Testing with real-world data before deploying
+
+The code we've developed will work both locally and in AWS with minimal changes, making the transition smooth when ready to go live.
