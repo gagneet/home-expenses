@@ -1,4 +1,4 @@
-# backend/app/api/endpoints.py
+# backend/app/api/endpoints.py - Updated version with PDF support
 import os
 import uuid
 import json
@@ -7,6 +7,8 @@ import logging
 from typing import List, Dict, Any
 from fastapi import APIRouter, File, UploadFile, BackgroundTasks, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
+import PyPDF2
+import io
 
 from app.services.parser import StatementProcessor
 from app.core.security import get_api_key
@@ -43,7 +45,7 @@ async def upload_statements(
     for file in files:
         file_path = os.path.join(session_dir, file.filename)
         
-        # Check file type (accept only text-based files)
+        # Check file type (accept only text-based files and PDFs)
         file_ext = os.path.splitext(file.filename)[1].lower()
         if file_ext not in ['.txt', '.pdf', '.csv']:
             continue
@@ -161,6 +163,20 @@ async def health_check():
     return {"status": "healthy"}
 
 
+# Extract text from PDF file
+def extract_text_from_pdf(pdf_path):
+    """Extract text from a PDF file"""
+    text = ""
+    try:
+        with open(pdf_path, 'rb') as file:
+            pdf_reader = PyPDF2.PdfReader(file)
+            for page_num in range(len(pdf_reader.pages)):
+                text += pdf_reader.pages[page_num].extract_text()
+    except Exception as e:
+        logger.error(f"Error extracting text from PDF {pdf_path}: {str(e)}")
+    return text
+
+
 # Background task for processing statements
 async def process_statements_task(session_id: str, session_dir: str, file_paths: List[str]):
     """Background task for processing bank statements"""
@@ -177,13 +193,34 @@ async def process_statements_task(session_id: str, session_dir: str, file_paths:
         all_results = []
         for file_path in file_paths:
             try:
-                # Read file content
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                    content = f.read()
+                # Check file extension
+                file_ext = os.path.splitext(file_path)[1].lower()
+                
+                # Read and process file content
+                if file_ext == '.pdf':
+                    # Extract text from PDF
+                    content = extract_text_from_pdf(file_path)
+                    if not content:
+                        raise Exception(f"Could not extract text from PDF file: {file_path}")
+                else:
+                    # Read text file
+                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                        content = f.read()
+                
+                # Debug: Write extracted content to a file for inspection
+                debug_content_path = os.path.join(session_dir, f"{os.path.basename(file_path)}.txt")
+                with open(debug_content_path, "w", encoding="utf-8") as f:
+                    f.write(content)
                 
                 # Process content
                 result = processor.process(content)
                 all_results.append(result)
+                
+                # Debug: Write processing result to a file for inspection
+                debug_result_path = os.path.join(session_dir, f"{os.path.basename(file_path)}.json")
+                with open(debug_result_path, "w", encoding="utf-8") as f:
+                    json.dump(result, f, cls=JsonEncoder, indent=2)
+                
             except Exception as e:
                 logger.error(f"Error processing file {file_path}: {str(e)}")
                 # Continue with other files
@@ -196,7 +233,7 @@ async def process_statements_task(session_id: str, session_dir: str, file_paths:
         
         # Save result to file
         with open(result_path, "w") as f:
-            json.dump(combined_result, f, cls=JsonEncoder)
+            json.dump(combined_result, f, cls=JsonEncoder, indent=2)
         
         logger.info(f"Processing completed for session {session_id}")
         
@@ -237,41 +274,44 @@ def combine_results(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     # Combine accounts
     for result in results:
         account_info = {
-            "bank": result["bank"],
-            "account_number": result["account_number"],
-            "statement_period": result["statement_period"],
-            "closing_balance": result["closing_balance"]
+            "bank": result.get("bank", "Unknown"),
+            "account_number": result.get("account_number", "Unknown"),
+            "statement_period": result.get("statement_period", "Unknown"),
+            "closing_balance": result.get("closing_balance", 0.0)
         }
         
         # Check if account already exists
-        if not any(acc["account_number"] == account_info["account_number"] for acc in combined["accounts"]):
+        if not any(acc.get("account_number") == account_info["account_number"] for acc in combined["accounts"]):
             combined["accounts"].append(account_info)
     
     # Combine transactions
     all_transactions = []
     for result in results:
-        all_transactions.extend(result["transactions"])
+        all_transactions.extend(result.get("transactions", []))
     
     # Sort transactions by date
-    combined["transactions"] = sorted(all_transactions, key=lambda x: x["date"])
+    combined["transactions"] = sorted(all_transactions, key=lambda x: x.get("date", ""))
     
     # Combine summary
     for result in results:
+        summary = result.get("summary", {})
+        
         # Add totals
-        combined["summary"]["total_income"] += result["summary"]["total_income"]
-        combined["summary"]["total_expenses"] += result["summary"]["total_expenses"]
+        combined["summary"]["total_income"] += summary.get("total_income", 0.0)
+        combined["summary"]["total_expenses"] += summary.get("total_expenses", 0.0)
         
         # Combine category summary
-        for category, data in result["summary"]["category_summary"].items():
+        for category, data in summary.get("category_summary", {}).items():
             if category not in combined["summary"]["category_summary"]:
                 combined["summary"]["category_summary"][category] = {"income": 0.0, "expenses": 0.0}
             
-            combined["summary"]["category_summary"][category]["income"] += data["income"]
-            combined["summary"]["category_summary"][category]["expenses"] += data["expenses"]
+            combined["summary"]["category_summary"][category]["income"] += data.get("income", 0.0)
+            combined["summary"]["category_summary"][category]["expenses"] += data.get("expenses", 0.0)
         
         # Combine high-level summary
-        for category, amount in result["summary"]["high_level_summary"].items():
-            combined["summary"]["high_level_summary"][category] += amount
+        for category, amount in summary.get("high_level_summary", {}).items():
+            if category in combined["summary"]["high_level_summary"]:
+                combined["summary"]["high_level_summary"][category] += amount
     
     # Calculate net cashflow
     combined["summary"]["net_cashflow"] = combined["summary"]["total_income"] - combined["summary"]["total_expenses"]

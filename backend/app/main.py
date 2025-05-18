@@ -1,3 +1,4 @@
+# backend/app/main.py - Updated with improved logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -5,10 +6,14 @@ import tempfile
 import shutil
 import logging
 
-# Configure logging
+# Configure logging with more details
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.DEBUG if os.environ.get("DEBUG", "0") == "1" else logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("app.log")
+    ]
 )
 logger = logging.getLogger(__name__)
 
@@ -53,3 +58,6 @@ async def cleanup():
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Home Expenditure Calculator API"}
+
+# Log startup message
+logger.info(f"Starting Home Expenditure Calculator API with CORS allowed origins: {os.environ.get('CORS_ORIGINS', 'http://localhost:3000')}")

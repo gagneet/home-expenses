@@ -1,4 +1,4 @@
-# backend/app/services/parser.py
+# backend/app/services/parser.py - Updated with improved PDF support
 import re
 import pandas as pd
 from typing import List, Dict, Any, Optional
@@ -72,7 +72,16 @@ class CommonwealthBankParser(StatementParser):
     
     def parse(self, content: str) -> Dict[str, Any]:
         """Parse a Commonwealth Bank statement"""
-        lines = content.split('\n')
+        # Debug the received content
+        logger.info(f"Parsing content with length {len(content)} characters")
+        
+        # Split the content into lines and filter out empty lines
+        lines = [line.strip() for line in content.split('\n') if line.strip()]
+        
+        # Log the first few lines for debugging
+        for i in range(min(10, len(lines))):
+            logger.debug(f"Line {i}: {lines[i]}")
+        
         transactions = []
         
         # Extract statement information
@@ -81,80 +90,111 @@ class CommonwealthBankParser(StatementParser):
         closing_balance = 0.0
         
         # Parse statement header information
-        for i in range(min(20, len(lines))):
+        for i in range(min(30, len(lines))):
             line = lines[i]
             if "Account Number" in line:
-                account_number = line.split("Account Number")[1].strip()
-            if "Statement Period" in line:
+                account_number = line.split("Account Number")[1].strip() if "Account Number" in line else ""
+            if "Statement Period" in line or "Period" in line and "Page" not in line:
                 period_text = line.split("Period")[1] if "Period" in line else ""
                 statement_period = period_text.strip() if period_text else ""
             if "Closing Balance" in line:
-                balance_match = re.search(r'\$[\d,]+\.\d{2} CR', line)
+                balance_match = re.search(r'\$[\d,]+\.\d{2}\s+CR', line)
                 if balance_match:
                     balance_str = balance_match.group(0)
-                    closing_balance = float(balance_str.replace("$", "").replace(",", "").replace(" CR", ""))
+                    closing_balance = float(balance_str.replace("$", "").replace(",", "").replace("CR", "").strip())
+        
+        # If we couldn't find the account number, try alternative methods
+        if not account_number:
+            account_pattern = r'Account Number\s+(\d{2} \d{4} \d{8})'
+            account_matches = re.search(account_pattern, content)
+            if account_matches:
+                account_number = account_matches.group(1)
+        
+        # If we still don't have account number, try another pattern
+        if not account_number:
+            for line in lines:
+                if re.search(r'\d{2} \d{4} \d{8}', line):
+                    account_number = re.search(r'\d{2} \d{4} \d{8}', line).group(0)
+                    break
         
         # Find where the transaction table starts
         transaction_start_index = 0
+        transaction_pattern = r'Date\s+Transaction\s+Debit\s+Credit\s+Balance'
+        
         for i, line in enumerate(lines):
-            if ("Date" in line and "Transaction" in line and 
-                "Debit" in line and "Credit" in line and 
-                "Balance" in line):
+            if re.search(transaction_pattern, line):
                 transaction_start_index = i + 1
+                logger.debug(f"Transaction table starts at line {transaction_start_index}")
                 break
+        
+        # If we couldn't find the transaction table, try another approach
+        if transaction_start_index == 0:
+            for i, line in enumerate(lines):
+                if "Date" in line and "Transaction" in line and "Debit" in line and "Credit" in line and "Balance" in line:
+                    transaction_start_index = i + 1
+                    logger.debug(f"Transaction table starts at line {transaction_start_index} (alternative method)")
+                    break
         
         # Process transaction lines
         current_date = ""
         current_transaction = None
+        
+        # We need to keep track of multiline transactions
+        multiline_description = False
         
         for i in range(transaction_start_index, len(lines)):
             line = lines[i].strip()
             
             # Skip empty lines or headers or footers
             if (not line or "Closing balance" in line or "Total debits" in line or
-                "Opening balance" in line or (line.startswith("Statement") and "Page" in line) or 
+                "Opening balance" in line or (("Statement" in line or "Page" in line) and "Account Number" not in line) or 
                 "CLOSING BALANCE" in line):
-                current_transaction = None
+                multiline_description = False
                 continue
             
-            # Check if the line starts with a date (DD MMM)
+            # Check if the line starts with a date pattern (e.g., "01 Aug")
             date_pattern = r'^\d{2} [A-Za-z]{3}'
             date_match = re.match(date_pattern, line)
             
             if date_match:
                 # This is a new transaction
+                multiline_description = False
+                
                 date = date_match.group(0)
                 
-                # Extract balance (at the end of the line)
-                balance_pattern = r'\$[\d,]+\.\d{2} CR$'
+                # Extract balance (at the end of the line) - Format: "$1,234.56 CR"
+                balance_pattern = r'\$[\d,]+\.\d{2}\s+CR'
                 balance_match = re.search(balance_pattern, line)
                 balance = None
                 if balance_match:
                     balance_str = balance_match.group(0)
-                    balance = float(balance_str.replace("$", "").replace(",", "").replace(" CR", ""))
+                    balance = float(balance_str.replace("$", "").replace(",", "").replace("CR", "").strip())
                 
-                # Extract debit amount (number followed by open parenthesis)
-                debit_pattern = r'[\d,]+\.\d{2} \('
+                # Extract debit amount (number followed by open parenthesis) - Format: "1,234.56 ("
+                debit_pattern = r'([\d,]+\.\d{2})\s+\('
                 debit_match = re.search(debit_pattern, line)
                 debit = None
                 if debit_match:
-                    debit_str = debit_match.group(0)
-                    debit = float(debit_str.replace(" (", "").replace(",", ""))
-                
-                # Extract credit amount (dollar amount with $ sign)
-                credit = None
-                credit_pattern = r'\$[\d,]+\.\d{2}'
-                credit_matches = re.finditer(credit_pattern, line)
-                
-                credit_matches_list = list(credit_matches)
-                if credit_matches_list:
-                    # Check if the match is not the balance
-                    potential_credit = credit_matches_list[0].group(0)
-                    is_balance = line.endswith("CR") and f"{potential_credit} CR" in line
+                    debit_str = debit_match.group(1)
+                    debit = float(debit_str.replace(",", ""))
                     
-                    if not is_balance or len(credit_matches_list) > 1:
-                        # Use the first match if it's not the balance or there are multiple matches
-                        credit = float(potential_credit.replace("$", "").replace(",", ""))
+                    # Log the found debit amount for debugging
+                    logger.debug(f"Found debit: {debit} from '{debit_str}'")
+                
+                # Extract credit amount (dollar amount with $ sign) - Format: "$1,234.56"
+                credit = None
+                credit_pattern = r'\$([\d,]+\.\d{2})'
+                credit_matches = list(re.finditer(credit_pattern, line))
+                
+                if credit_matches:
+                    # Skip the last match if it's the balance
+                    for match in credit_matches[:-1] if balance_match else credit_matches:
+                        credit_str = match.group(1)
+                        credit = float(credit_str.replace(",", ""))
+                        
+                        # Log the found credit amount for debugging
+                        logger.debug(f"Found credit: {credit} from '${credit_str}'")
+                        break
                 
                 # Extract description (everything between date and amounts)
                 description = ""
@@ -166,42 +206,66 @@ class CommonwealthBankParser(StatementParser):
                     
                     if debit_match:
                         end_index = line.find(debit_match.group(0))
-                    elif credit is not None:
-                        credit_str = f"${credit:,.2f}"
-                        if line.find(credit_str) > date_index:
-                            end_index = line.find(credit_str)
+                    elif credit_matches and not balance_match:
+                        end_index = credit_matches[0].start()
                     elif balance_match:
-                        end_index = line.find(balance_match.group(0))
+                        # If there's both a credit and a balance, use the credit's position
+                        if len(credit_matches) > 1:
+                            end_index = credit_matches[0].start()
+                        else:
+                            end_index = balance_match.start()
                     
                     description = line[date_index:end_index].strip()
+                    
+                    # Log the extracted description for debugging
+                    logger.debug(f"Extracted description: '{description}'")
                 
-                # Create and add the transaction
-                if debit:
-                    transaction = self.get_standardized_transaction(
-                        date=date,
-                        description=description,
-                        amount=debit,
-                        transaction_type="debit",
-                        balance=balance
-                    )
-                    current_transaction = transaction
-                    transactions.append(transaction)
-                elif credit:
-                    transaction = self.get_standardized_transaction(
-                        date=date,
-                        description=description,
-                        amount=credit,
-                        transaction_type="credit",
-                        balance=balance
-                    )
-                    current_transaction = transaction
-                    transactions.append(transaction)
+                # Only add transactions with a valid amount
+                if debit or credit:
+                    # Create transaction
+                    if debit:
+                        transaction = self.get_standardized_transaction(
+                            date=date,
+                            description=description,
+                            amount=debit,
+                            transaction_type="debit",
+                            balance=balance
+                        )
+                        current_transaction = transaction
+                        transactions.append(transaction)
+                        
+                        # Log the added debit transaction for debugging
+                        logger.debug(f"Added debit transaction: {date} - {description} - ${debit}")
+                    elif credit:
+                        transaction = self.get_standardized_transaction(
+                            date=date,
+                            description=description,
+                            amount=credit,
+                            transaction_type="credit",
+                            balance=balance
+                        )
+                        current_transaction = transaction
+                        transactions.append(transaction)
+                        
+                        # Log the added credit transaction for debugging
+                        logger.debug(f"Added credit transaction: {date} - {description} - ${credit}")
+                else:
+                    # This might be a description-only line or the start of a multiline description
+                    multiline_description = True
+                    current_transaction = None
             
-            elif current_transaction:
-                # This might be a continuation of the previous transaction's description
+            elif current_transaction and multiline_description:
+                # This is a continuation of the previous transaction's description
                 current_transaction['description'] += " " + line
                 # Update category based on the full description
                 current_transaction['category'] = self.categorize_transaction(current_transaction['description'])
+                
+                # Log the extended description for debugging
+                logger.debug(f"Extended description: '{current_transaction['description']}'")
+        
+        # Log summary of parsed data
+        logger.info(f"Parsed {len(transactions)} transactions from statement")
+        logger.info(f"Account: {account_number}, Period: {statement_period}, Closing Balance: {closing_balance}")
         
         # Return statement information and transactions
         return {
@@ -217,6 +281,8 @@ class StatementAnalyzer:
     
     def analyze(self, transactions: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Generate financial summary from transactions"""
+        logger.info(f"Analyzing {len(transactions)} transactions")
+        
         summary = {
             "total_income": 0.0,
             "total_expenses": 0.0,
@@ -276,6 +342,11 @@ class StatementAnalyzer:
         # Calculate net cashflow
         summary['net_cashflow'] = summary['total_income'] - summary['total_expenses']
         
+        # Log summary results for debugging
+        logger.info(f"Total Income: ${summary['total_income']:.2f}")
+        logger.info(f"Total Expenses: ${summary['total_expenses']:.2f}")
+        logger.info(f"Net Cashflow: ${summary['net_cashflow']:.2f}")
+        
         return summary
 
 
@@ -293,7 +364,7 @@ class StatementProcessor:
         """Detect which bank the statement is from"""
         content_lower = content.lower()
         
-        if 'commonwealth bank' in content_lower or 'commbank' in content_lower:
+        if 'commonwealth bank' in content_lower or 'commbank' in content_lower or 'cba' in content_lower:
             return 'commonwealth'
         
         # Default to Commonwealth Bank parser for now
@@ -303,6 +374,7 @@ class StatementProcessor:
         """Process a bank statement"""
         # Detect bank
         bank = self.detect_bank(content)
+        logger.info(f"Detected bank: {bank}")
         
         # Parse statement
         if bank in self.parsers:
@@ -310,7 +382,25 @@ class StatementProcessor:
             parsed_data = parser.parse(content)
             
             # Analyze transactions
-            summary = self.analyzer.analyze(parsed_data['transactions'])
+            if parsed_data['transactions']:
+                summary = self.analyzer.analyze(parsed_data['transactions'])
+            else:
+                # If no transactions were parsed, create an empty summary
+                summary = {
+                    "total_income": 0.0,
+                    "total_expenses": 0.0,
+                    "net_cashflow": 0.0,
+                    "category_summary": {},
+                    "high_level_summary": {
+                        "Mortgage": 0.0,
+                        "Strata": 0.0,
+                        "Utilities": 0.0,
+                        "Groceries": 0.0,
+                        "Eating Out": 0.0,
+                        "Travel": 0.0,
+                        "Others": 0.0
+                    }
+                }
             
             # Combine results
             result = {
