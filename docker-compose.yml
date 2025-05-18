@@ -12,6 +12,8 @@ services:
       - "3000:3000"
     environment:
       - REACT_APP_API_URL=http://localhost:8000
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
     depends_on:
       - backend
 
@@ -41,9 +43,15 @@ services:
       - DEBUG=1
       - DATA_DIR=/tmp/localstack/data
       - DOCKER_HOST=unix:///var/run/docker.sock
+      - DISABLE_CORS_CHECKS=1
+      - EAGER_SERVICE_LOADING=1
+      # Add this important environment variable to prevent cleanup on exit
+      - DISABLE_CLEANUP_ON_EXIT=1
     volumes:
       - ./localstack-init:/docker-entrypoint-initaws.d
       - localstack-data:/tmp/localstack/data
+      # Mount docker socket (if you need Docker-in-Docker capabilities)
       - /var/run/docker.sock:/var/run/docker.sock
+
 volumes:
   localstack-data:

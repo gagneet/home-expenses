@@ -1,31 +1,10 @@
 // frontend/src/components/Summary.jsx
 import React from 'react';
-import { ExpenseBarChart, ExpensePieChart } from './Charts';
 
 const Summary = ({ summaryData }) => {
   if (!summaryData) {
     return <div className="text-center py-8">No data available</div>;
   }
-
-  // Format data for bar chart
-  const getBarChartData = () => {
-    if (!summaryData.high_level_summary) return [];
-    
-    return Object.entries(summaryData.high_level_summary).map(([name, value]) => ({
-      name,
-      amount: value
-    }));
-  };
-
-  // Format data for pie chart
-  const getPieChartData = () => {
-    if (!summaryData.high_level_summary) return [];
-    
-    return Object.entries(summaryData.high_level_summary).map(([name, value]) => ({
-      name,
-      value
-    }));
-  };
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
@@ -50,19 +29,6 @@ const Summary = ({ summaryData }) => {
           <p className={`text-2xl font-bold ${summaryData.net_cashflow >= 0 ? 'text-green-600' : 'text-yellow-600'}`}>
             ${summaryData.net_cashflow?.toFixed(2) || '0.00'}
           </p>
-        </div>
-      </div>
-      
-      {/* Charts */}
-      <div className="mb-8">
-        <h3 className="text-lg font-medium mb-4">Expense Breakdown</h3>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Bar Chart */}
-          <ExpenseBarChart data={getBarChartData()} />
-          
-          {/* Pie Chart */}
-          <ExpensePieChart data={getPieChartData()} />
         </div>
       </div>
       
@@ -113,57 +79,6 @@ const Summary = ({ summaryData }) => {
           </table>
         </div>
       </div>
-      
-      {/* Transaction History (Optional) */}
-      {summaryData.transaction_history && (
-        <div className="mt-8">
-          <h3 className="text-lg font-medium mb-4">Transaction History</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Description
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Category
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amount
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {Object.entries(summaryData.transaction_history).map(([date, transactions]) => (
-                  transactions.map((transaction, index) => (
-                    <tr key={`${date}-${index}`} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      {index === 0 && (
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" rowSpan={transactions.length}>
-                          {date}
-                        </td>
-                      )}
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {transaction.description}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {transaction.category}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <span className={transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'}>
-                          ${Math.abs(transaction.amount).toFixed(2)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

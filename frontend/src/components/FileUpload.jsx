@@ -25,6 +25,15 @@ const FileUpload = ({ onUploadComplete }) => {
     setIsUploading(true);
     setError(null);
     
+    // Simulate API call with timeout for now
+    setTimeout(() => {
+      // Generate a mock session ID
+      const mockSessionId = 'session-' + Math.random().toString(36).substring(2, 15);
+      onUploadComplete(mockSessionId);
+      setIsUploading(false);
+    }, 1500);
+    
+    /* Uncomment this once you have the API service ready
     try {
       // Create form data
       const formData = new FormData();
@@ -56,6 +65,7 @@ const FileUpload = ({ onUploadComplete }) => {
     } finally {
       setIsUploading(false);
     }
+    */
   };
 
   const clearAll = () => {
