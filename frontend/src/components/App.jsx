@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import FileUpload from './FileUpload';
 import Summary from './Summary';
-// import { checkProcessingStatus } from '../services/api'; // Uncomment once you have this service implemented
+import { checkProcessingStatus } from '../services/api';
 
 const App = () => {
   const [sessionId, setSessionId] = useState(null);
@@ -15,33 +15,6 @@ const App = () => {
   useEffect(() => {
     if (!sessionId) return;
     
-    // Since we don't have the API set up yet, we'll just mock it
-    setIsLoading(true);
-    
-    // Simulate API call with timeout
-    setTimeout(() => {
-      // Mock data
-      const mockSummary = {
-        total_income: 7500.00,
-        total_expenses: 5234.78,
-        net_cashflow: 2265.22,
-        high_level_summary: {
-          Mortgage: 1850.00,
-          Strata: 450.00,
-          Utilities: 375.45,
-          Groceries: 685.22,
-          'Eating Out': 425.35,
-          Travel: 250.00,
-          Others: 1198.76
-        }
-      };
-      
-      setSummaryData(mockSummary);
-      setProcessingStatus('completed');
-      setIsLoading(false);
-    }, 2000);
-    
-    /* Uncomment this once you have the API service ready
     const checkStatus = async () => {
       setIsLoading(true);
       setError(null);
@@ -67,7 +40,6 @@ const App = () => {
     };
     
     checkStatus();
-    */
   }, [sessionId]);
 
   const handleUploadComplete = (newSessionId) => {

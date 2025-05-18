@@ -1,5 +1,6 @@
 // frontend/src/components/FileUpload.jsx
 import React, { useState, useRef } from 'react';
+import { uploadStatements } from '../services/api';
 
 const FileUpload = ({ onUploadComplete }) => {
   const [statements, setStatements] = useState([]);
@@ -16,7 +17,7 @@ const FileUpload = ({ onUploadComplete }) => {
     setStatements(prev => prev.filter((_, i) => i !== index));
   };
 
-  const uploadStatements = async () => {
+  const handleUpload = async () => {
     if (statements.length === 0) {
       setError('Please select at least one file to upload');
       return;
@@ -25,37 +26,13 @@ const FileUpload = ({ onUploadComplete }) => {
     setIsUploading(true);
     setError(null);
     
-    // Simulate API call with timeout for now
-    setTimeout(() => {
-      // Generate a mock session ID
-      const mockSessionId = 'session-' + Math.random().toString(36).substring(2, 15);
-      onUploadComplete(mockSessionId);
-      setIsUploading(false);
-    }, 1500);
-    
-    /* Uncomment this once you have the API service ready
     try {
-      // Create form data
-      const formData = new FormData();
-      statements.forEach(file => {
-        formData.append('files', file);
-      });
-      
-      // Make API call
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/v1/upload/`, {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Upload failed with status: ${response.status}`);
-      }
-      
-      const data = await response.json();
+      // Use the actual API service
+      const result = await uploadStatements(statements);
       
       // Call the callback with the session ID
-      if (data.session_id) {
-        onUploadComplete(data.session_id);
+      if (result.session_id) {
+        onUploadComplete(result.session_id);
       } else {
         throw new Error('No session ID returned from server');
       }
@@ -65,7 +42,6 @@ const FileUpload = ({ onUploadComplete }) => {
     } finally {
       setIsUploading(false);
     }
-    */
   };
 
   const clearAll = () => {
@@ -117,7 +93,7 @@ const FileUpload = ({ onUploadComplete }) => {
       
       <div className="flex space-x-4">
         <button
-          onClick={uploadStatements}
+          onClick={handleUpload}
           disabled={statements.length === 0 || isUploading}
           className={`px-4 py-2 rounded-md ${
             statements.length === 0 || isUploading

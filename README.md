@@ -206,6 +206,42 @@ finance-calculator/
     └── workflows/
         └── ci-cd.yml             # GitHub Actions workflow
 
+finance-calculator-pdf/
+├── backend/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── __init__.py
+│   │   │   └── endpoints.py       # API routes for statement processing
+│   │   ├── core/
+│   │   │   ├── __init__.py
+│   │   │   └── security.py        # API security settings
+│   │   ├── services/
+│   │   │   ├── __init__.py
+│   │   │   └── parser.py          # Statement parsing logic
+│   │   ├── utils/
+│   │   │   └── __init__.py
+│   │   ├── __init__.py
+│   │   └── main.py                # FastAPI application
+│   ├── Dockerfile                 # For building the backend
+│   └── requirements.txt           # Python dependencies
+├── frontend/
+│   ├── public/
+│   │   └── index.html
+│   ├── src/
+│   │   ├── components/
+│   │   │   └── HomeExpenseCalculator.jsx  # Main component
+│   │   ├── App.js
+│   │   ├── index.css              # With Tailwind CSS imports
+│   │   ├── index.js
+│   │   └── reportWebVitals.js
+│   ├── Dockerfile                 # For production
+│   ├── Dockerfile.dev             # For development
+│   ├── nginx.conf                 # Nginx configuration for production
+│   ├── package.json               # Frontend dependencies
+│   ├── postcss.config.js          # PostCSS configuration for Tailwind
+│   └── tailwind.config.js         # Tailwind CSS configuration
+└── docker-compose.yml             # Docker Compose configuration
+
 ## Migrating to AWS When Ready
 
 When we're ready to deploy to AWS:

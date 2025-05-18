@@ -5,12 +5,11 @@ import json
 import shutil
 import logging
 from typing import List, Dict, Any
-from fastapi import APIRouter, File, UploadFile, BackgroundTasks, HTTPException, Depends
+from fastapi import APIRouter, File, UploadFile, BackgroundTasks, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
 
+from app.services.parser import StatementProcessor
 from app.core.security import get_api_key
-from app.services.processor import BankStatementProcessor
-from app.utils.aws import aws_client
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +17,7 @@ router = APIRouter()
 
 @router.post("/upload/", response_model=Dict[str, Any])
 async def upload_statements(
+    request: Request,
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
     api_key: bool = Depends(get_api_key)
@@ -25,14 +25,11 @@ async def upload_statements(
     """
     Upload bank and credit card statements for processing
     """
-    from fastapi import Request
-    
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded")
     
-    # Get app instance to access upload directory
-    request = Request.scope["app"]
-    upload_dir = request.state.upload_dir
+    # Get upload directory from app state
+    upload_dir = request.app.state.upload_dir
     
     # Create session ID for this batch of files
     session_id = str(uuid.uuid4())
@@ -46,9 +43,9 @@ async def upload_statements(
     for file in files:
         file_path = os.path.join(session_dir, file.filename)
         
-        # Check file type
+        # Check file type (accept only text-based files)
         file_ext = os.path.splitext(file.filename)[1].lower()
-        if file_ext not in ['.xlsx', '.xls', '.csv', '.pdf']:
+        if file_ext not in ['.txt', '.pdf', '.csv']:
             continue
         
         # Save the file
@@ -76,15 +73,16 @@ async def upload_statements(
 
 
 @router.get("/status/{session_id}", response_model=Dict[str, Any])
-async def check_processing_status(session_id: str, api_key: bool = Depends(get_api_key)):
+async def check_processing_status(
+    request: Request, 
+    session_id: str, 
+    api_key: bool = Depends(get_api_key)
+):
     """
     Check the status of a processing session
     """
-    from fastapi import Request
-    
-    # Get app instance to access upload directory
-    request = Request.scope["app"]
-    upload_dir = request.state.upload_dir
+    # Get upload directory from app state
+    upload_dir = request.app.state.upload_dir
     
     # Check if result file exists
     result_path = os.path.join(upload_dir, session_id, "result.json")
@@ -119,14 +117,6 @@ async def check_processing_status(session_id: str, api_key: bool = Depends(get_a
                 "message": "An unknown error occurred during processing"
             }
     
-    # Check if results are in DynamoDB if not found locally
-    dynamodb_result = aws_client.get_result_from_dynamodb(session_id)
-    if dynamodb_result:
-        return {
-            "status": "completed",
-            "result": dynamodb_result
-        }
-    
     # Still processing
     return {
         "status": "processing",
@@ -135,15 +125,16 @@ async def check_processing_status(session_id: str, api_key: bool = Depends(get_a
 
 
 @router.delete("/session/{session_id}", response_model=Dict[str, Any])
-async def delete_session(session_id: str, api_key: bool = Depends(get_api_key)):
+async def delete_session(
+    request: Request, 
+    session_id: str, 
+    api_key: bool = Depends(get_api_key)
+):
     """
     Delete a processing session and all its files
     """
-    from fastapi import Request
-    
-    # Get app instance to access upload directory
-    request = Request.scope["app"]
-    upload_dir = request.state.upload_dir
+    # Get upload directory from app state
+    upload_dir = request.app.state.upload_dir
     
     session_dir = os.path.join(upload_dir, session_id)
     
@@ -179,24 +170,35 @@ async def process_statements_task(session_id: str, session_dir: str, file_paths:
     error_path = os.path.join(session_dir, "error.txt")
     
     try:
-        # Create processor
-        processor = BankStatementProcessor()
+        # Initialize processor
+        processor = StatementProcessor()
         
-        # Process statements
-        await processor.process_statements(file_paths)
+        # Process each file
+        all_results = []
+        for file_path in file_paths:
+            try:
+                # Read file content
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+                
+                # Process content
+                result = processor.process(content)
+                all_results.append(result)
+            except Exception as e:
+                logger.error(f"Error processing file {file_path}: {str(e)}")
+                # Continue with other files
         
-        # Generate summary
-        summary = await processor.generate_summary()
+        if not all_results:
+            raise Exception("No files were successfully processed")
+        
+        # Combine results from all files
+        combined_result = combine_results(all_results)
         
         # Save result to file
         with open(result_path, "w") as f:
-            json.dump(summary, f)
+            json.dump(combined_result, f, cls=JsonEncoder)
         
         logger.info(f"Processing completed for session {session_id}")
-        
-        # Upload to S3 and save to DynamoDB
-        aws_client.upload_to_s3(result_path, f"{session_id}/result.json")
-        aws_client.save_result_to_dynamodb(session_id, summary)
         
     except Exception as e:
         logger.error(f"Error processing statements for session {session_id}: {str(e)}")
@@ -204,3 +206,82 @@ async def process_statements_task(session_id: str, session_dir: str, file_paths:
         # Save error to file
         with open(error_path, "w") as f:
             f.write(f"Error processing statements: {str(e)}")
+
+
+def combine_results(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Combine results from multiple statements"""
+    if not results:
+        return {}
+    
+    # Initialize combined result
+    combined = {
+        "accounts": [],
+        "summary": {
+            "total_income": 0.0,
+            "total_expenses": 0.0,
+            "net_cashflow": 0.0,
+            "category_summary": {},
+            "high_level_summary": {
+                "Mortgage": 0.0,
+                "Strata": 0.0,
+                "Utilities": 0.0,
+                "Groceries": 0.0,
+                "Eating Out": 0.0,
+                "Travel": 0.0,
+                "Others": 0.0
+            }
+        },
+        "transactions": []
+    }
+    
+    # Combine accounts
+    for result in results:
+        account_info = {
+            "bank": result["bank"],
+            "account_number": result["account_number"],
+            "statement_period": result["statement_period"],
+            "closing_balance": result["closing_balance"]
+        }
+        
+        # Check if account already exists
+        if not any(acc["account_number"] == account_info["account_number"] for acc in combined["accounts"]):
+            combined["accounts"].append(account_info)
+    
+    # Combine transactions
+    all_transactions = []
+    for result in results:
+        all_transactions.extend(result["transactions"])
+    
+    # Sort transactions by date
+    combined["transactions"] = sorted(all_transactions, key=lambda x: x["date"])
+    
+    # Combine summary
+    for result in results:
+        # Add totals
+        combined["summary"]["total_income"] += result["summary"]["total_income"]
+        combined["summary"]["total_expenses"] += result["summary"]["total_expenses"]
+        
+        # Combine category summary
+        for category, data in result["summary"]["category_summary"].items():
+            if category not in combined["summary"]["category_summary"]:
+                combined["summary"]["category_summary"][category] = {"income": 0.0, "expenses": 0.0}
+            
+            combined["summary"]["category_summary"][category]["income"] += data["income"]
+            combined["summary"]["category_summary"][category]["expenses"] += data["expenses"]
+        
+        # Combine high-level summary
+        for category, amount in result["summary"]["high_level_summary"].items():
+            combined["summary"]["high_level_summary"][category] += amount
+    
+    # Calculate net cashflow
+    combined["summary"]["net_cashflow"] = combined["summary"]["total_income"] - combined["summary"]["total_expenses"]
+    
+    return combined
+
+
+class JsonEncoder(json.JSONEncoder):
+    """Custom JSON encoder to handle non-serializable types"""
+    def default(self, obj):
+        if isinstance(obj, (set, frozenset)):
+            return list(obj)
+        return super().default(obj)

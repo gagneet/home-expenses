@@ -1,13 +1,9 @@
-# backend/app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import tempfile
 import shutil
 import logging
-
-from app.core.config import settings
-from app.api.endpoints import router as api_router
 
 # Configure logging
 logging.basicConfig(
@@ -18,26 +14,30 @@ logger = logging.getLogger(__name__)
 
 # Create a temporary directory for uploads
 UPLOAD_DIR = tempfile.mkdtemp()
-logger.info(f"Created temporary upload directory: {UPLOAD_DIR}")
+logger.info(f"Created temporary directory for uploads: {UPLOAD_DIR}")
 
 # Create FastAPI app
 app = FastAPI(
-    title=settings.APP_NAME,
-    description=settings.APP_DESCRIPTION,
-    version=settings.APP_VERSION
+    title="Home Expenditure Calculator API",
+    description="API for processing bank statements and analyzing expenses",
+    version="1.0.0"
 )
 
-# Add CORS middleware
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Include API router
+from app.api.endpoints import router as api_router
 app.include_router(api_router, prefix="/api/v1")
+
+# Make upload directory available to other modules
+app.state.upload_dir = UPLOAD_DIR
 
 # Cleanup function to run when the application shuts down
 @app.on_event("shutdown")
@@ -49,5 +49,7 @@ async def cleanup():
     except Exception as e:
         logger.error(f"Error cleaning up temporary directory: {str(e)}")
 
-# Make upload directory available to other modules
-app.state.upload_dir = UPLOAD_DIR
+# Root endpoint
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the Home Expenditure Calculator API"}
