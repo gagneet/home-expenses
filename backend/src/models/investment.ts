@@ -27,10 +27,15 @@ export const createInvestmentTransaction = async (
       franking_credits,
       franking_percentage,
       units,
-      net_amount -- Assuming net_amount is the same as gross for a dividend
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $6)
+      net_amount
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     RETURNING *;
   `;
+
+  // Note: This assumes a fixed withholding tax rate for non-residents, or for other tax reasons.
+  // In a real-world application, this rate should be configurable or based on user-specific tax status.
+  const withholdingTaxRate = 0.15; // 15% is a common withholding tax rate for unfranked dividends.
+  const netAmount = gross_amount * (1 - withholdingTaxRate);
 
   const values = [
     user_id,
@@ -42,6 +47,7 @@ export const createInvestmentTransaction = async (
     franking_credits,
     franking_percentage,
     units_held,
+    netAmount,
   ];
 
   try {

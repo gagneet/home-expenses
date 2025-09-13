@@ -27,26 +27,38 @@ export default function AccountForm({ onSubmitSuccess, onCancel }: AccountFormPr
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+
+    let sanitizedValue = value;
+    if (name === 'accountName') {
+      // Remove potentially harmful characters and limit length
+      sanitizedValue = value.replace(/[<>"']/g, '').slice(0, 100);
+    } else if (name === 'accountNumber') {
+      // Allow only digits and limit length
+      sanitizedValue = value.replace(/\D/g, '').slice(0, 10);
+    }
+
+    setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
   };
 
   const handleBSBChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const bsb = e.target.value;
-    setFormData(prev => ({ ...prev, bsb }));
+    const { value } = e.target;
+    // Sanitize and format BSB as XXX-XXX
+    const sanitizedValue = value.replace(/\D/g, '').replace(/(\d{3})(?=\d)/, '$1-').slice(0, 7);
 
-    if (bsb.length < 7) {
-      setBankInfo(null);
-      setErrors(prev => ({ ...prev, bsb: undefined }));
-      return;
-    }
+    setFormData(prev => ({ ...prev, bsb: sanitizedValue }));
 
-    const validation = AustralianBankingUtils.validateBSB(bsb);
-    if (validation.valid && validation.bank) {
-      setBankInfo({ bankName: validation.bank });
-      setErrors(prev => ({ ...prev, bsb: undefined }));
+    if (sanitizedValue.length === 7) {
+      const validation = AustralianBankingUtils.validateBSB(sanitizedValue);
+      if (validation.valid && validation.bank) {
+        setBankInfo({ bankName: validation.bank });
+        setErrors(prev => ({ ...prev, bsb: undefined }));
+      } else {
+        setErrors(prev => ({ ...prev, bsb: validation.error || 'Invalid BSB' }));
+        setBankInfo(null);
+      }
     } else {
-      setErrors(prev => ({ ...prev, bsb: validation.error || 'Invalid BSB' }));
       setBankInfo(null);
+      setErrors(prev => ({ ...prev, bsb: undefined }));
     }
   };
 
@@ -167,8 +179,9 @@ export default function AccountForm({ onSubmitSuccess, onCancel }: AccountFormPr
           <option value="checking">Everyday Banking</option>
           <option value="savings">Savings Account</option>
           <option value="credit_card">Credit Card</option>
-          <option disabled value="investment">Investment Account</option>
-          <option disabled value="superannuation">Superannuation</option>
+          {/* Investment and Superannuation accounts are handled via a different flow/form. */}
+          <option disabled value="investment">Investment Account (Coming Soon)</option>
+          <option disabled value="superannuation">Superannuation (Coming Soon)</option>
         </select>
       </div>
 

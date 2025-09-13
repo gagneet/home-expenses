@@ -2,6 +2,18 @@
 import axios from 'axios';
 import { ExpenseSummary, Transaction, UploadResult } from '../types';
 
+// Custom error types for better error handling in components
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status?: number,
+    public code?: string
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 // Base API URL - configurable via environment variable
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000/api';
 
@@ -196,8 +208,20 @@ export const createAccount = async (accountData: NewAccountData) => {
     const response = await axios.post(`${API_URL}/accounts/create`, accountData, getAuthHeaders());
     return response.data;
   } catch (error) {
-    console.error('Error creating account:', error);
-    throw error;
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      const message = error.response?.data?.error || 'An error occurred while creating the account.';
+      const details = error.response?.data?.details;
+
+      if (status === 401) {
+        throw new ApiError('Authentication required. Please log in again.', status, 'AUTH_REQUIRED');
+      } else if (status === 400) {
+        throw new ApiError(details || message, status, 'INVALID_DATA');
+      }
+      throw new ApiError(message, status);
+    }
+    // Fallback for non-Axios errors
+    throw new ApiError('A network error occurred. Please try again.');
   }
 };
 
@@ -212,8 +236,12 @@ export const processGst = async (gstData: GstProcessData) => {
     const response = await axios.post(`${API_URL}/transactions/process-gst`, gstData, getAuthHeaders());
     return response.data;
   } catch (error) {
-    console.error('Error processing GST:', error);
-    throw error;
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      const message = error.response?.data?.error || 'An error occurred while processing GST.';
+      throw new ApiError(message, status);
+    }
+    throw new ApiError('A network error occurred. Please try again.');
   }
 };
 
@@ -231,8 +259,12 @@ export const processDividend = async (dividendData: DividendProcessData) => {
     const response = await axios.post(`${API_URL}/investments/dividend`, dividendData, getAuthHeaders());
     return response.data;
   } catch (error) {
-    console.error('Error processing dividend:', error);
-    throw error;
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      const message = error.response?.data?.error || 'An error occurred while processing the dividend.';
+      throw new ApiError(message, status);
+    }
+    throw new ApiError('A network error occurred. Please try again.');
   }
 };
 

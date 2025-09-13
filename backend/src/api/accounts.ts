@@ -18,6 +18,12 @@ router.post('/create', async (req: AuthenticatedRequest, res) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
+    // Validate account type
+    const validAccountTypes = ['checking', 'savings', 'credit_card', 'investment', 'superannuation'];
+    if (!validAccountTypes.includes(accountType)) {
+      return res.status(400).json({ error: 'Invalid account type' });
+    }
+
     // 1. Validate BSB
     const bsbValidation = AustralianBankingUtils.validateBSB(bsb);
     if (!bsbValidation.valid) {

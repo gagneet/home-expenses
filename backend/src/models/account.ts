@@ -12,13 +12,10 @@ async function getAccountTypeId(typeName: string): Promise<string> {
     [typeName]
   );
   if (res.rows.length === 0) {
-    // If the type doesn't exist, we could throw an error or default to a generic type.
-    // For now, let's try to find a generic 'checking' or 'other' type if the specific one fails.
-    const fallback = await pool.query(
-      "SELECT id FROM account_types WHERE sub_category = 'other' LIMIT 1"
-    );
-    if (fallback.rows.length === 0) throw new Error(`Account type '${typeName}' not found and no fallback available.`);
-    return fallback.rows[0].id;
+    // If the type name is not found in the database, reject the request.
+    // This ensures data integrity and prevents the creation of accounts with invalid types.
+    // A production system should have a well-defined list of account types.
+    throw new Error(`Account type '${typeName}' is not a valid or supported account type.`);
   }
   return res.rows[0].id;
 }

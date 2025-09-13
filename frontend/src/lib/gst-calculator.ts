@@ -13,8 +13,10 @@ export class GSTCalculator {
   static calculateFromTotal(totalAmount: number | string, treatment: GstTreatment = 'GST_INCLUSIVE'): GstCalculationResult {
     const amount = typeof totalAmount === 'string' ? parseFloat(totalAmount) : totalAmount;
 
-    if (isNaN(amount)) {
-      // In a component, you might want to return a default state instead of throwing
+    if (isNaN(amount) || !isFinite(amount) || amount < 0) {
+      // For frontend use, we return a zeroed object instead of throwing an error.
+      // This prevents the UI from crashing due to invalid user input during calculations.
+      // The backend validator will throw a hard error.
       return { totalAmount: 0, netAmount: 0, gstAmount: 0, gstRate: 0 };
     }
 
@@ -52,7 +54,8 @@ export class GSTCalculator {
   static addGSTToNet(netAmount: number | string): GstCalculationResult {
     const net = typeof netAmount === 'string' ? parseFloat(netAmount) : netAmount;
 
-    if (isNaN(net)) {
+    if (isNaN(net) || !isFinite(net) || net < 0) {
+        // For frontend use, we return a zeroed object instead of throwing an error.
         return { totalAmount: 0, netAmount: 0, gstAmount: 0, gstRate: 0 };
     }
 

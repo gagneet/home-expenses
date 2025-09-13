@@ -13,8 +13,8 @@ export class GSTCalculator {
   static calculateFromTotal(totalAmount: number | string, treatment: GstTreatment = 'GST_INCLUSIVE'): GstCalculationResult {
     const amount = typeof totalAmount === 'string' ? parseFloat(totalAmount) : totalAmount;
 
-    if (isNaN(amount)) {
-      throw new Error('Invalid total amount provided');
+    if (isNaN(amount) || !isFinite(amount) || amount < 0) {
+      throw new Error('Invalid or negative amount provided. Amount must be a non-negative number.');
     }
 
     switch (treatment) {
@@ -53,8 +53,8 @@ export class GSTCalculator {
   static addGSTToNet(netAmount: number | string): GstCalculationResult {
     const net = typeof netAmount === 'string' ? parseFloat(netAmount) : netAmount;
 
-    if (isNaN(net)) {
-      throw new Error('Invalid net amount provided');
+    if (isNaN(net) || !isFinite(net) || net < 0) {
+      throw new Error('Invalid or negative amount provided. Amount must be a non-negative number.');
     }
 
     const gstAmount = Math.round((net * this.GST_RATE) * 100) / 100;
