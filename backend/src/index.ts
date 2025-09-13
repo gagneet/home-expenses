@@ -3,6 +3,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRouter from './api/auth';
 import uploadRouter from './api/upload';
+import accountsRouter from './api/accounts';
+import transactionsRouter from './api/transactions';
+import investmentsRouter from './api/investments';
 
 dotenv.config();
 
@@ -14,6 +17,9 @@ app.use(express.json());
 
 app.use('/api/auth', authRouter);
 app.use('/api/statements', uploadRouter);
+app.use('/api/accounts', accountsRouter);
+app.use('/api/transactions', transactionsRouter);
+app.use('/api/investments', investmentsRouter);
 
 app.get('/', (req, res) => {
   res.send('Hello, World!');

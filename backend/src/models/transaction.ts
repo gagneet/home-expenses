@@ -36,3 +36,26 @@ export const findTransactionsByUser = async (userId: string): Promise<Transactio
     }
   }));
 };
+
+export const updateTransactionGstDetails = async (
+  transactionId: string,
+  gstAmount: number,
+  netAmount: number
+): Promise<Transaction> => {
+  const result = await pool.query(
+    `UPDATE transactions
+     SET
+       gst_amount = $1,
+       amount = $2, -- Update the main amount to be the net amount
+       updated_at = CURRENT_TIMESTAMP
+     WHERE id = $3
+     RETURNING *`,
+    [gstAmount, netAmount, transactionId]
+  );
+
+  if (result.rows.length === 0) {
+    throw new Error('Transaction not found or failed to update.');
+  }
+
+  return result.rows[0];
+};
