@@ -44,7 +44,7 @@ const Dashboard: React.FC<{
       { category: 'Other', amount: 1300, percentage: 23.21 }
     ]
   };
-  
+
   const mockTransactions: Transaction[] = [
     {
       id: '1',
@@ -91,7 +91,7 @@ const Dashboard: React.FC<{
       date: '2024-01-20',
       description: 'Wdl ATM Red NP-Majura Park',
       amount: -240.00,
-      balance: 896.69, 
+      balance: 896.69,
       category: { name: 'ATM Withdrawals' }
     },
     {
@@ -111,30 +111,30 @@ const Dashboard: React.FC<{
       category: { name: 'Debt Payments', subcategory: 'Credit Card' }
     }
   ];
-  
+
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        
+
         // In a real implementation, this would fetch data from the API
         // const summary = await api.fetchExpenseSummary();
         // const transactionData = await api.fetchTransactions();
-        
+
         // Using mock data for demonstration
         setTimeout(() => {
           setExpenseSummary(mockSummary);
           setTransactions(mockTransactions);
           setLoading(false);
         }, 1000);
-        
+
       } catch (err) {
         setError('Failed to load dashboard data');
         console.error(err);
         setLoading(false);
       }
     };
-    
+
     loadData();
   }, [uploadDate]);
   

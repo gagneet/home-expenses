@@ -1,0 +1,42 @@
+import { Category } from './category';
+
+export interface Transaction {
+  id: string;
+  user_id: string;
+  account_id: string;
+  payee_id?: string;
+  category_id?: string;
+  parent_transaction_id?: string;
+  transaction_date: Date | string;
+  posted_date?: Date;
+  description: string;
+  original_description?: string;
+  reference_number?: string;
+  bpay_reference?: string;
+  cheque_number?: string;
+  amount: number;
+  running_balance?: number;
+  transaction_type?: 'debit' | 'credit' | 'transfer_in' | 'transfer_out' | 'fee' | 'interest' | 'dividend' | 'capital_gain' | 'capital_loss' | 'other';
+  status?: 'pending' | 'cleared' | 'reconciled' | 'void';
+  is_split_transaction?: boolean;
+  is_transfer?: boolean;
+  transfer_account_id?: string;
+  is_tax_relevant?: boolean;
+  gst_amount?: number;
+  franking_credits?: number;
+  foreign_amount?: number;
+  foreign_currency?: string;
+  exchange_rate?: number;
+  import_source?: string;
+  import_id?: string;
+  is_duplicate?: boolean;
+  confidence_score?: number;
+  tags?: string[];
+  notes?: string;
+  attachments?: any;
+  location?: any;
+  metadata?: any;
+  created_at?: Date;
+  updated_at?: Date;
+  category?: Category;
+}

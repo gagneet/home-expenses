@@ -1,15 +1,46 @@
 // frontend/src/App.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import FileUploadSimple from './components/upload/FileUploadSimple';
 import Dashboard from './components/dashboard/Dashboard';
+import Login from './components/auth/Login';
+import Register from './components/auth/Register';
+import { Transaction } from './types/transaction';
 
 const App: React.FC = () => {
+  const [token, setToken] = useState<string | null>(null);
   const [isUploaded, setIsUploaded] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadDate, setUploadDate] = useState<string | undefined>(undefined);
-  
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [showLogin, setShowLogin] = useState(true);
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem('token');
+    if (storedToken) {
+      setToken(storedToken);
+    }
+    const storedTransactions = localStorage.getItem('transactions');
+    if (storedTransactions) {
+      setTransactions(JSON.parse(storedTransactions));
+      setIsUploaded(true);
+    }
+  }, []);
+
+  const handleLogin = (token: string) => {
+    setToken(token);
+    localStorage.setItem('token', token);
+  };
+
+  const handleLogout = () => {
+    setToken(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('transactions');
+  };
+
   const handleUploadComplete = (data: any) => {
     console.log('Upload complete:', data);
+    setTransactions(data.transactions);
+    localStorage.setItem('transactions', JSON.stringify(data.transactions));
     setIsUploaded(true);
     setUploadDate(new Date().toISOString());
     setUploadError(null);
@@ -23,21 +54,39 @@ const App: React.FC = () => {
   const handleReset = () => {
     setIsUploaded(false);
     setUploadError(null);
+    setTransactions([]);
+    localStorage.removeItem('transactions');
   };
   
+  if (!token) {
+    return showLogin ? (
+      <Login onLogin={handleLogin} onShowRegister={() => setShowLogin(false)} />
+    ) : (
+      <Register onRegister={() => setShowLogin(true)} onShowLogin={() => setShowLogin(true)} />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900">Financial Statement Analyzer</h1>
-          {isUploaded && (
+          <div>
+            {isUploaded && (
+              <button
+                onClick={handleReset}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 mr-4"
+              >
+                Upload New Statements
+              </button>
+            )}
             <button
-              onClick={handleReset}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              onClick={handleLogout}
+              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
             >
-              Upload New Statements
+              Logout
             </button>
-          )}
+          </div>
         </div>
       </header>
       
@@ -63,7 +112,7 @@ const App: React.FC = () => {
             onError={handleUploadError}
           />
         ) : (
-          <Dashboard uploadDate={uploadDate} />
+          <Dashboard uploadDate={uploadDate} transactions={transactions} />
         )}
       </main>
       

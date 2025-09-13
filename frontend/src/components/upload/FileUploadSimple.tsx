@@ -50,7 +50,7 @@ const FileUploadSimple: React.FC<FileUploadSimpleProps> = ({
       setTimeout(() => {
         clearInterval(interval);
         setUploadProgress(100);
-        
+
         // Mock response
         const mockResponse = {
           message: 'Files processed successfully',
@@ -75,7 +75,7 @@ const FileUploadSimple: React.FC<FileUploadSimpleProps> = ({
             categorySummaries: []
           }
         };
-        
+
         onUploadComplete(mockResponse);
         setUploading(false);
       }, 3000);
