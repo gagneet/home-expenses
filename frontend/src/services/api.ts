@@ -168,10 +168,83 @@ export const mockUploadStatements = async (
   };
 };
 
+// Helper to get auth headers
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  if (!token) return {};
+  return {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+};
+
+
+// =============================================
+// NEW API FUNCTIONS
+// =============================================
+
+export interface NewAccountData {
+  accountName: string;
+  accountNumber: string;
+  bsb: string;
+  accountType: string;
+}
+
+export const createAccount = async (accountData: NewAccountData) => {
+  try {
+    const response = await axios.post(`${API_URL}/accounts/create`, accountData, getAuthHeaders());
+    return response.data;
+  } catch (error) {
+    console.error('Error creating account:', error);
+    throw error;
+  }
+};
+
+export interface GstProcessData {
+  transactionId: string;
+  amount: number;
+  gstTreatment: 'GST_INCLUSIVE' | 'GST_FREE' | 'INPUT_TAXED' | 'NOT_APPLICABLE';
+}
+
+export const processGst = async (gstData: GstProcessData) => {
+  try {
+    const response = await axios.post(`${API_URL}/transactions/process-gst`, gstData, getAuthHeaders());
+    return response.data;
+  } catch (error) {
+    console.error('Error processing GST:', error);
+    throw error;
+  }
+};
+
+
+export interface DividendProcessData {
+  accountId: string;
+  securityCode: string;
+  dividendAmount: number;
+  frankingPercentage: number;
+  sharesHeld: number;
+}
+
+export const processDividend = async (dividendData: DividendProcessData) => {
+  try {
+    const response = await axios.post(`${API_URL}/investments/dividend`, dividendData, getAuthHeaders());
+    return response.data;
+  } catch (error) {
+    console.error('Error processing dividend:', error);
+    throw error;
+  }
+};
+
+
 // Export a combined API with fallbacks to mocks for development
 export default {
   uploadStatements: process.env.NODE_ENV === 'development' ? mockUploadStatements : uploadStatements,
   fetchExpenseSummary,
   fetchTransactions,
-  fetchMonthlyTrends
+  fetchMonthlyTrends,
+  // New functions
+  createAccount,
+  processGst,
+  processDividend,
 };
