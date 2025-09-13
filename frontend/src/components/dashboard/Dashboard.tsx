@@ -7,10 +7,13 @@ import Summary from './Summary';
 import TransactionList from './TransactionList';
 import api from '../../services/api';
 
-// Simplified version of the Dashboard component
-const Dashboard: React.FC<{
+interface DashboardProps {
   uploadDate?: string;
-}> = ({ uploadDate }) => {
+  transactions: Transaction[];
+}
+
+// Simplified version of the Dashboard component
+const Dashboard: React.FC<DashboardProps> = ({ uploadDate, transactions }) => {
   const [expenseSummary, setExpenseSummary] = useState<ExpenseSummary>({
     totalIncome: 0,
     totalExpenses: 0,
@@ -19,7 +22,6 @@ const Dashboard: React.FC<{
     categorySummaries: []
   });
   
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -45,98 +47,23 @@ const Dashboard: React.FC<{
     ]
   };
 
-  const mockTransactions: Transaction[] = [
-    {
-      id: '1',
-      date: '2024-01-05',
-      description: 'Salary Aris Zinc Pty Ltd',
-      amount: 8490.02,
-      balance: 9054.37,
-      category: { name: 'Income', subcategory: 'Salary' }
-    },
-    {
-      id: '2',
-      date: '2024-01-05',
-      description: 'Home Loan Pymt',
-      amount: -2981.00,
-      balance: 6073.37,
-      category: { name: 'Housing', subcategory: 'Mortgage' }
-    },
-    {
-      id: '3',
-      date: '2024-01-05',
-      description: 'Transfer To 86 400 CommBank App For Savings',
-      amount: -1225.00,
-      balance: 4848.37,
-      category: { name: 'Transfers', subcategory: 'Savings' }
-    },
-    {
-      id: '4',
-      date: '2024-01-06',
-      description: 'Direct Debit AMERICAN EXPRESS',
-      amount: -1435.53,
-      balance: 3412.84,
-      category: { name: 'Debt Payments', subcategory: 'Credit Card' }
-    },
-    {
-      id: '5',
-      date: '2024-01-14',
-      description: 'CBA CR CARD AUTOPAY PMNT',
-      amount: -2276.15,
-      balance: 1136.69,
-      category: { name: 'Debt Payments', subcategory: 'Credit Card' }
-    },
-    {
-      id: '6',
-      date: '2024-01-20',
-      description: 'Wdl ATM Red NP-Majura Park',
-      amount: -240.00,
-      balance: 896.69,
-      category: { name: 'ATM Withdrawals' }
-    },
-    {
-      id: '7',
-      date: '2024-01-25',
-      description: 'Direct Credit Avneet Rooprai For Daily Needs',
-      amount: 6259.32,
-      balance: 7156.01,
-      category: { name: 'Income', subcategory: 'Transfer' }
-    },
-    {
-      id: '8',
-      date: '2024-01-28',
-      description: 'Direct Debit AMERICAN EXPRESS',
-      amount: -3470.97,
-      balance: 3685.04,
-      category: { name: 'Debt Payments', subcategory: 'Credit Card' }
-    }
-  ];
-
   useEffect(() => {
-    const loadData = async () => {
+    const processData = () => {
       try {
         setLoading(true);
-
-        // In a real implementation, this would fetch data from the API
-        // const summary = await api.fetchExpenseSummary();
-        // const transactionData = await api.fetchTransactions();
-
-        // Using mock data for demonstration
-        setTimeout(() => {
-          setExpenseSummary(mockSummary);
-          setTransactions(mockTransactions);
-          setLoading(false);
-        }, 1000);
-
+        // In a real implementation, this would fetch a summary from the API
+        // For now, we use mock data for the summary.
+        setExpenseSummary(mockSummary);
+        setLoading(false);
       } catch (err) {
-        setError('Failed to load dashboard data');
+        setError('Failed to process dashboard data');
         console.error(err);
         setLoading(false);
       }
     };
 
-    loadData();
-  }, [uploadDate]);
+    processData();
+  }, [transactions]); // Re-process if transactions change
   
   // Handle category selection for filtering
   const handleCategorySelect = (category: string | null) => {

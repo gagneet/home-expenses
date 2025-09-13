@@ -4,11 +4,14 @@ import FileUploadSimple from './components/upload/FileUploadSimple';
 import Dashboard from './components/dashboard/Dashboard';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
-import { Transaction } from './types/transaction';
+import AccountForm from './components/accounts/AccountForm'; // Import the new form
+import { Transaction } from './types'; // Corrected import path
+
+type View = 'dashboard' | 'upload' | 'addAccount';
 
 const App: React.FC = () => {
   const [token, setToken] = useState<string | null>(null);
-  const [isUploaded, setIsUploaded] = useState(false);
+  const [currentView, setCurrentView] = useState<View>('upload');
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadDate, setUploadDate] = useState<string | undefined>(undefined);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -22,7 +25,7 @@ const App: React.FC = () => {
     const storedTransactions = localStorage.getItem('transactions');
     if (storedTransactions) {
       setTransactions(JSON.parse(storedTransactions));
-      setIsUploaded(true);
+      setCurrentView('dashboard'); // Go to dashboard if data exists
     }
   }, []);
 
@@ -33,6 +36,7 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     setToken(null);
+    setCurrentView('upload');
     localStorage.removeItem('token');
     localStorage.removeItem('transactions');
   };
@@ -41,7 +45,7 @@ const App: React.FC = () => {
     console.log('Upload complete:', data);
     setTransactions(data.transactions);
     localStorage.setItem('transactions', JSON.stringify(data.transactions));
-    setIsUploaded(true);
+    setCurrentView('dashboard');
     setUploadDate(new Date().toISOString());
     setUploadError(null);
   };
@@ -52,12 +56,38 @@ const App: React.FC = () => {
   };
   
   const handleReset = () => {
-    setIsUploaded(false);
+    setCurrentView('upload');
     setUploadError(null);
     setTransactions([]);
     localStorage.removeItem('transactions');
   };
   
+  const renderCurrentView = () => {
+    switch (currentView) {
+      case 'addAccount':
+        return (
+          <AccountForm
+            onSubmitSuccess={(newAccount) => {
+              console.log('Account created:', newAccount);
+              // Maybe refresh accounts list in the future
+              setCurrentView('dashboard');
+            }}
+            onCancel={() => setCurrentView('dashboard')}
+          />
+        );
+      case 'upload':
+        return (
+          <FileUploadSimple
+            onUploadComplete={handleUploadComplete}
+            onError={handleUploadError}
+          />
+        );
+      case 'dashboard':
+      default:
+        return <Dashboard uploadDate={uploadDate} transactions={transactions} />;
+    }
+  };
+
   if (!token) {
     return showLogin ? (
       <Login onLogin={handleLogin} onShowRegister={() => setShowLogin(false)} />
@@ -69,20 +99,24 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100">
       <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Financial Statement Analyzer</h1>
-          <div>
-            {isUploaded && (
-              <button
-                onClick={handleReset}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 mr-4"
-              >
-                Upload New Statements
-              </button>
-            )}
+        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-800">Financial Analyzer</h1>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleReset}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              New Upload
+            </button>
+            <button
+              onClick={() => setCurrentView('addAccount')}
+              className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700"
+            >
+              Add Account
+            </button>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700"
             >
               Logout
             </button>
@@ -92,28 +126,13 @@ const App: React.FC = () => {
       
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {uploadError && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-red-700">Upload failed: {uploadError}</p>
-              </div>
-            </div>
+          <div className="bg-red-100 border-l-4 border-red-400 text-red-700 p-4 mb-6 rounded-md">
+            <p className="font-bold">Upload Failed</p>
+            <p>{uploadError}</p>
           </div>
         )}
         
-        {!isUploaded ? (
-          <FileUploadSimple 
-            onUploadComplete={handleUploadComplete}
-            onError={handleUploadError}
-          />
-        ) : (
-          <Dashboard uploadDate={uploadDate} transactions={transactions} />
-        )}
+        {renderCurrentView()}
       </main>
       
       <footer className="bg-white shadow mt-8 py-4">

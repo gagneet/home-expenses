@@ -1,5 +1,5 @@
 {
-  "name": "home-expenses-backend",
+  "name": "financial-statement-analyzer-backend",
   "version": "1.0.0",
   "description": "",
   "main": "dist/index.js",
@@ -33,6 +33,11 @@
   },
   "devDependencies": {
     "ts-node": "^10.9.2",
+    "typescript": "^5.9.2",
+    "uuid": "^13.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/pg": "^8.11.8",
+    "@types/multer": "^1.4.11",
     "@types/pdf-parse": "^1.1.4"
   }
 }
