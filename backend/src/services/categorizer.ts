@@ -1,5 +1,5 @@
 import { Transaction } from '../types/transaction';
-import { CATEGORY_RULES } from './categories';
+import { CATEGORY_RULES } from './category-rules';
 import { findCategoryByName, createCategory } from '../models/category';
 
 interface CategoryRule {
@@ -26,6 +26,7 @@ export class TransactionCategorizer {
           return {
             ...transaction,
             category_id: category.id,
+            category: category,
           };
         }
       }

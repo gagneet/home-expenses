@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { createUser, findUserByEmail } from '../models/user';
 import { User } from '../types/user';
+import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
 
@@ -10,6 +11,8 @@ if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable must be set');
 }
 const JWT_SECRET = process.env.JWT_SECRET;
+
+const generateErrorId = () => uuidv4();
 
 // Register a new user
 router.post('/register', async (req, res) => {
@@ -31,8 +34,13 @@ router.post('/register', async (req, res) => {
 
     res.status(201).json({ message: 'User created successfully', userId: user.id });
   } catch (error) {
-    console.error('Error registering user:', error);
-    res.status(500).json({ message: 'Error registering user' });
+    const errorId = generateErrorId();
+    console.error(`Error registering user (ID: ${errorId}):`, {
+      email,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+    res.status(500).json({ message: 'Error registering user', error_id: errorId });
   }
 });
 
@@ -61,8 +69,13 @@ router.post('/login', async (req, res) => {
 
     res.status(200).json({ token });
   } catch (error) {
-    console.error('Error logging in:', error);
-    res.status(500).json({ message: 'Error logging in' });
+    const errorId = generateErrorId();
+    console.error(`Error logging in (ID: ${errorId}):`, {
+      email,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+    res.status(500).json({ message: 'Error logging in', error_id: errorId });
   }
 });
 

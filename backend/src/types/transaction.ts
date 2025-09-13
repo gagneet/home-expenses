@@ -1,3 +1,5 @@
+import { Category } from './category';
+
 export interface Transaction {
   id: string;
   user_id: string;
@@ -5,7 +7,7 @@ export interface Transaction {
   payee_id?: string;
   category_id?: string;
   parent_transaction_id?: string;
-  transaction_date: Date;
+  transaction_date: Date | string;
   posted_date?: Date;
   description: string;
   original_description?: string;
@@ -36,4 +38,5 @@ export interface Transaction {
   metadata?: any;
   created_at?: Date;
   updated_at?: Date;
+  category?: Category;
 }

@@ -7,8 +7,11 @@ import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
 import { createTransaction } from '../models/transaction';
 import { TransactionCategorizer } from '../services/categorizer';
 import { Transaction } from '../types/transaction';
+import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
+
+const generateErrorId = () => uuidv4();
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -92,9 +95,13 @@ function parseAmount(amountStr: string): number {
 
 interface BankParsingConfig {
   transactionRegex: RegExp;
+  datePattern: RegExp;
+  descriptionPattern: RegExp;
+  amountPattern: RegExp;
+  dateFormat: string;
 }
 
-const BANK_CONFIGS: { [key: string]: BankParsingConfig } = {
+const BANK_CONFIGS: { [key: string]: Partial<BankParsingConfig> } = {
   'commbank': {
     transactionRegex: /^\s*([\d]{2}\s[A-Za-z]{3})\s+(.+?)\s+([-\(]?\$?\(?[\d,]+\.\d{2}\)?-?)\s*$/,
   },
@@ -109,17 +116,19 @@ const parseTransactions = (text: string, bank: string): Omit<Transaction, 'id' |
   const config = BANK_CONFIGS[bank] || BANK_CONFIGS['default'];
 
   for (const line of lines) {
-    const match = line.match(config.transactionRegex);
-    if (match) {
-      const [_, dateStr, description, amountStr] = match;
-      const date = parseDate(dateStr);
-      if (!date) continue;
+    if (config.transactionRegex) {
+      const match = line.match(config.transactionRegex);
+      if (match) {
+        const [_, dateStr, description, amountStr] = match;
+        const date = parseDate(dateStr);
+        if (!date) continue;
 
-      transactions.push({
-        transaction_date: date,
-        description: description.trim(),
-        amount: parseAmount(amountStr),
-      });
+        transactions.push({
+          transaction_date: date,
+          description: description.trim(),
+          amount: parseAmount(amountStr),
+        });
+      }
     }
   }
   return transactions;
@@ -144,7 +153,7 @@ router.post('/upload', authMiddleware, upload.array('files'), async (req: Authen
     }
 
     const categorizer = new TransactionCategorizer();
-    let totalTransactions = 0;
+    const allCreatedTransactions = [];
 
     for (const file of files) {
       const dataBuffer = fs.readFileSync(file.path);
@@ -153,18 +162,27 @@ router.post('/upload', authMiddleware, upload.array('files'), async (req: Authen
       const categorizedTransactions = await categorizer.categorizeAll(parsedTransactions.map(t => ({...t, user_id: userId})), userId);
 
       for (const t of categorizedTransactions) {
-        await createTransaction({
+        const createdTransaction = await createTransaction({
           ...(t as Omit<Transaction, 'id'>),
           account_id: accountId,
         });
-        totalTransactions++;
+        allCreatedTransactions.push(createdTransaction);
       }
     }
 
-    res.status(200).json({ message: `Successfully uploaded and processed ${totalTransactions} transactions.` });
+    res.status(200).json({
+      message: `Successfully uploaded and processed ${allCreatedTransactions.length} transactions.`,
+      transactions: allCreatedTransactions,
+    });
   } catch (error) {
-    console.error('Error processing upload:', error);
-    res.status(500).json({ message: 'Error processing uploaded files' });
+    const errorId = generateErrorId();
+    console.error(`Error processing upload (ID: ${errorId}):`, {
+      userId,
+      accountId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+    res.status(500).json({ message: 'Error processing uploaded files', error_id: errorId });
   }
 });
 
