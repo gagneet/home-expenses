@@ -2,14 +2,17 @@
 import React, { useState } from 'react';
 import FileUploadSimple from './components/upload/FileUploadSimple';
 import Dashboard from './components/dashboard/Dashboard';
+import { Transaction } from './types';
 
 const App: React.FC = () => {
   const [isUploaded, setIsUploaded] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadDate, setUploadDate] = useState<string | undefined>(undefined);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   
   const handleUploadComplete = (data: any) => {
     console.log('Upload complete:', data);
+    setTransactions(data.transactions);
     setIsUploaded(true);
     setUploadDate(new Date().toISOString());
     setUploadError(null);
@@ -23,6 +26,7 @@ const App: React.FC = () => {
   const handleReset = () => {
     setIsUploaded(false);
     setUploadError(null);
+    setTransactions([]);
   };
   
   return (
@@ -63,7 +67,7 @@ const App: React.FC = () => {
             onError={handleUploadError}
           />
         ) : (
-          <Dashboard uploadDate={uploadDate} />
+          <Dashboard uploadDate={uploadDate} transactions={transactions} />
         )}
       </main>
       

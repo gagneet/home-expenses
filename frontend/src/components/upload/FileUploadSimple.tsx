@@ -1,5 +1,6 @@
 // frontend/src/components/upload/FileUploadSimple.tsx
 import React, { useState, useCallback } from 'react';
+import axios from 'axios';
 
 interface FileUploadSimpleProps {
   onUploadComplete: (data: any) => void;
@@ -33,52 +34,27 @@ const FileUploadSimple: React.FC<FileUploadSimpleProps> = ({
     setUploading(true);
     setUploadProgress(0);
 
-    try {
-      // Simulate progress
-      const interval = setInterval(() => {
-        setUploadProgress(prev => {
-          const newProgress = prev + 10;
-          if (newProgress >= 100) {
-            clearInterval(interval);
-            return 100;
-          }
-          return newProgress;
-        });
-      }, 300);
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('files', file);
+    });
+    formData.append('bank', selectedBank);
 
-      // Simulate API call
-      setTimeout(() => {
-        clearInterval(interval);
-        setUploadProgress(100);
-        
-        // Mock response
-        const mockResponse = {
-          message: 'Files processed successfully',
-          statements: [
-            {
-              id: '1',
-              bankName: 'Commonwealth Bank',
-              accountNumber: 'XXXX-XXXX-1234',
-              statementPeriod: {
-                start: '2024-01-01',
-                end: '2024-01-31'
-              },
-              transactionCount: files.length * 15,
-              fileName: files[0]?.name || 'statement.pdf'
-            }
-          ],
-          summary: {
-            totalIncome: 9500,
-            totalExpenses: 5600,
-            netSavings: 3900,
-            savingsRate: 41.05,
-            categorySummaries: []
-          }
-        };
-        
-        onUploadComplete(mockResponse);
-        setUploading(false);
-      }, 3000);
+    try {
+      const response = await axios.post('http://localhost:4000/api/statements/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / (progressEvent.total || 1)
+          );
+          setUploadProgress(percentCompleted);
+        },
+      });
+
+      onUploadComplete(response.data);
+      setUploading(false);
     } catch (error) {
       onError(error as Error);
       setUploading(false);
