@@ -1,11 +1,13 @@
-// frontend/src/components/upload/FileUploadSimple.tsx
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Account } from '../../types/account';
 
 interface FileUploadSimpleProps {
   onUploadComplete: (data: any) => void;
   onError: (error: Error) => void;
 }
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000';
 
 const FileUploadSimple: React.FC<FileUploadSimpleProps> = ({ 
   onUploadComplete, 
@@ -15,6 +17,30 @@ const FileUploadSimple: React.FC<FileUploadSimpleProps> = ({
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedBank, setSelectedBank] = useState<string>('commbank');
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [selectedAccount, setSelectedAccount] = useState<string>('');
+
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          // Handle case where user is not authenticated
+          return;
+        }
+        const response = await axios.get(`${API_URL}/api/accounts`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setAccounts(response.data);
+        if (response.data.length > 0) {
+          setSelectedAccount(response.data[0].id);
+        }
+      } catch (error) {
+        console.error('Error fetching accounts:', error);
+      }
+    };
+    fetchAccounts();
+  }, []);
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -27,7 +53,7 @@ const FileUploadSimple: React.FC<FileUploadSimpleProps> = ({
   };
 
   const handleUpload = async () => {
-    if (files.length === 0) {
+    if (files.length === 0 || !selectedAccount) {
       return;
     }
 
@@ -39,11 +65,14 @@ const FileUploadSimple: React.FC<FileUploadSimpleProps> = ({
       formData.append('files', file);
     });
     formData.append('bank', selectedBank);
+    formData.append('accountId', selectedAccount);
 
     try {
-      const response = await axios.post('http://localhost:4000/api/statements/upload', formData, {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API_URL}/api/statements/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`,
         },
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round(
@@ -65,6 +94,22 @@ const FileUploadSimple: React.FC<FileUploadSimpleProps> = ({
     <div className="bg-white rounded-lg shadow p-6">
       <h2 className="text-xl font-semibold mb-4">Upload Bank Statements</h2>
       
+      {/* Account Selection */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Select Account
+        </label>
+        <select
+          className="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          value={selectedAccount}
+          onChange={e => setSelectedAccount(e.target.value)}
+        >
+          {accounts.map(account => (
+            <option key={account.id} value={account.id}>{account.account_name}</option>
+          ))}
+        </select>
+      </div>
+
       {/* Bank Selection */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -138,9 +183,9 @@ const FileUploadSimple: React.FC<FileUploadSimpleProps> = ({
         <button
           type="button"
           onClick={handleUpload}
-          disabled={files.length === 0 || uploading}
+          disabled={files.length === 0 || uploading || !selectedAccount}
           className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 
-            ${files.length === 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'}`}
+            ${files.length === 0 || !selectedAccount ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'}`}
         >
           {uploading ? (
             <span className="flex items-center">

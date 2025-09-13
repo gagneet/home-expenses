@@ -5,7 +5,11 @@ import { createUser, findUserByEmail } from '../models/user';
 import { User } from '../types/user';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-default-secret';
+
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable must be set');
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Register a new user
 router.post('/register', async (req, res) => {

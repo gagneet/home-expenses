@@ -19,26 +19,106 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
+    // Sanitize filename and add timestamp
+    const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
     const uniquePrefix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniquePrefix + '-' + file.originalname);
+    cb(null, uniquePrefix + '-' + sanitizedName);
   }
 });
 
-const upload = multer({ storage });
+const fileFilter = (req: any, file: any, cb: any) => {
+  // Only allow PDF files
+  if (file.mimetype === 'application/pdf') {
+    cb(null, true);
+  } else {
+    cb(new Error('Only PDF files are allowed'), false);
+  }
+};
 
-const parseTransactions = (text: string): Omit<Transaction, 'id' | 'user_id' | 'account_id'>[] => {
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+    files: 5 // Maximum 5 files per upload
+  }
+});
+
+// Helper to parse various date formats
+function parseDate(dateStr: string): Date | null {
+  // Try several common date formats: DD/MM/YYYY, YYYY-MM-DD, DD MMM YYYY, DD MMM, etc.
+  const formats = [
+    /^\d{2}\/\d{2}\/\d{4}$/, // 12/01/2024
+    /^\d{4}-\d{2}-\d{2}$/,   // 2024-01-12
+    /^\d{2}\s[A-Za-z]{3}\s\d{4}$/, // 12 Jan 2024
+    /^\d{2}\s[A-Za-z]{3}$/,  // 12 Jan
+  ];
+  let date: Date | null = null;
+  for (const format of formats) {
+    if (format.test(dateStr.trim())) {
+      // Try to parse directly
+      date = new Date(dateStr.trim());
+      if (!isNaN(date.getTime())) return date;
+    }
+  }
+  // Fallback: try Date constructor
+  date = new Date(dateStr.trim());
+  if (!isNaN(date.getTime())) return date;
+  return null;
+}
+
+// Helper to parse amounts with optional currency, negative, parentheses, etc.
+function parseAmount(amountStr: string): number {
+  // Remove currency symbols and whitespace
+  let cleaned = amountStr.replace(/[^0-9,.\-()]/g, '').trim();
+  // Handle parentheses for negative amounts
+  let negative = false;
+  if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
+    negative = true;
+    cleaned = cleaned.slice(1, -1);
+  }
+  // Remove thousands separators (commas)
+  cleaned = cleaned.replace(/,/g, '');
+  // Handle trailing minus
+  if (cleaned.endsWith('-')) {
+    negative = true;
+    cleaned = cleaned.slice(0, -1);
+  }
+  // Parse float
+  let value = parseFloat(cleaned);
+  if (isNaN(value)) return 0;
+  return negative ? -value : value;
+}
+
+interface BankParsingConfig {
+  transactionRegex: RegExp;
+}
+
+const BANK_CONFIGS: { [key: string]: BankParsingConfig } = {
+  'commbank': {
+    transactionRegex: /^\s*([\d]{2}\s[A-Za-z]{3})\s+(.+?)\s+([-\(]?\$?\(?[\d,]+\.\d{2}\)?-?)\s*$/,
+  },
+  'default': {
+    transactionRegex: /^\s*([\d]{2}\/[\d]{2}\/[\d]{4}|[\d]{4}-[\d]{2}-[\d]{2}|[\d]{2}\s[A-Za-z]{3}\s[\d]{4}|[\d]{2}\s[A-Za-z]{3})\s+(.+?)\s+([-\(]?\$?\(?[\d,]+\.\d{2}\)?-?)\s*$/,
+  }
+};
+
+const parseTransactions = (text: string, bank: string): Omit<Transaction, 'id' | 'user_id' | 'account_id'>[] => {
   const transactions: Omit<Transaction, 'id' | 'user_id' | 'account_id'>[] = [];
   const lines = text.split('\n');
-  const transactionRegex = /(\d{2}\s[A-Za-z]{3})\s(.*?)\s([\d,]+\.\d{2})/;
+  const config = BANK_CONFIGS[bank] || BANK_CONFIGS['default'];
 
   for (const line of lines) {
-    const match = line.match(transactionRegex);
+    const match = line.match(config.transactionRegex);
     if (match) {
-      const [_, date, description, amount] = match;
+      const [_, dateStr, description, amountStr] = match;
+      const date = parseDate(dateStr);
+      if (!date) continue;
+
       transactions.push({
-        transaction_date: new Date(date),
+        transaction_date: date,
         description: description.trim(),
-        amount: parseFloat(amount.replace(/,/g, '')),
+        amount: parseAmount(amountStr),
       });
     }
   }
@@ -51,7 +131,7 @@ router.post('/upload', authMiddleware, upload.array('files'), async (req: Authen
   }
 
   const { userId } = req.user;
-  const { accountId } = req.body;
+  const { accountId, bank } = req.body;
 
   if (!accountId) {
     return res.status(400).json({ message: 'accountId is required' });
@@ -69,13 +149,12 @@ router.post('/upload', authMiddleware, upload.array('files'), async (req: Authen
     for (const file of files) {
       const dataBuffer = fs.readFileSync(file.path);
       const data = await pdf(dataBuffer);
-      const parsedTransactions = parseTransactions(data.text);
-      const categorizedTransactions = categorizer.categorizeAll(parsedTransactions);
+      const parsedTransactions = parseTransactions(data.text, bank);
+      const categorizedTransactions = await categorizer.categorizeAll(parsedTransactions.map(t => ({...t, user_id: userId})), userId);
 
       for (const t of categorizedTransactions) {
         await createTransaction({
-          ...t,
-          user_id: userId,
+          ...(t as Omit<Transaction, 'id'>),
           account_id: accountId,
         });
         totalTransactions++;

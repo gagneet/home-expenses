@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import FileUploadSimple from './components/upload/FileUploadSimple';
 import Dashboard from './components/dashboard/Dashboard';
-import { Transaction } from './types';
+import { Transaction } from './types/transaction';
 
 const App: React.FC = () => {
   const [isUploaded, setIsUploaded] = useState(false);
