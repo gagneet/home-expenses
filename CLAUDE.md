@@ -76,7 +76,7 @@ The project uses a comprehensive PostgreSQL schema (`schema.sql`) designed for A
 │   └── types/              # TypeScript interfaces
 ├── docker/                 # Docker configurations
 ├── terraform/              # AWS infrastructure as code
-└── schema.sql             # Complete PostgreSQL database schema
+└── schema.sql              # Complete PostgreSQL database schema
 ```
 
 ## Development Workflow
@@ -90,7 +90,7 @@ The project uses a comprehensive PostgreSQL schema (`schema.sql`) designed for A
 ## Important Notes
 
 - Frontend runs on port 3000, backend on port 4000
-- MongoDB is referenced in Docker Compose but the schema is PostgreSQL
+- The schema is PostgreSQL, docker compose has a wrong reference to MongoDB
 - The application includes both simplified MVP components and full-featured versions
 - Transaction categorization uses both rule-based and ML approaches
 - Australian banking specifics are built into the data models (BSB, BPAY, etc.)
