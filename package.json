@@ -1,4 +1,13 @@
 {
+  "name": "financial-statement-analyzer",
+  "version": "0.1.4",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "start": "npm run start --prefix frontend",
+    "lint": "npm run lint --prefix frontend"
+  },
   "devDependencies": {
     "@types/cors": "^2.8.19"
   }

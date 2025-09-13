@@ -1,7 +1,7 @@
 // frontend/src/components/upload/FileUpload.tsx
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import axios from 'axios';
+import { uploadStatements } from '../../services/api';
 import { BankOption } from '../../types';
 
 interface FileUploadProps {
@@ -20,9 +20,8 @@ const bankOptions: BankOption[] = [
 const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete, onError }) => {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedBank, setSelectedBank] = useState<string>('');
-  const [accountType, setAccountType] = useState<string>('checking');
+  const [accountId, setAccountId] = useState<string>(''); // Assuming accountId is needed for upload
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setFiles(prev => [...prev, ...acceptedFiles]);
@@ -43,34 +42,16 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete, onError }) =>
   };
 
   const handleUpload = async () => {
-    if (files.length === 0 || !selectedBank) {
+    if (files.length === 0 || !selectedBank || !accountId) {
+      // Add a check for accountId
       return;
     }
 
     setUploading(true);
-    setUploadProgress(0);
-
-    const formData = new FormData();
-    files.forEach(file => {
-      formData.append('files', file);
-    });
-    formData.append('bank', selectedBank);
-    formData.append('accountType', accountType);
 
     try {
-      const response = await axios.post('/api/statements/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / (progressEvent.total || 100)
-          );
-          setUploadProgress(percentCompleted);
-        },
-      });
-
-      onUploadComplete(response.data);
+      const data = await uploadStatements(files, selectedBank, accountId);
+      onUploadComplete(data);
     } catch (error) {
       onError(error as Error);
     } finally {
@@ -102,21 +83,18 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete, onError }) =>
         </div>
       </div>
       
-      {/* Account Type */}
+      {/* Account ID */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Account Type
+          Account ID
         </label>
-        <select
+        <input
+          type="text"
           className="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          value={accountType}
-          onChange={e => setAccountType(e.target.value)}
-        >
-          <option value="checking">Checking Account</option>
-          <option value="savings">Savings Account</option>
-          <option value="credit">Credit Card</option>
-          <option value="loan">Loan/Mortgage</option>
-        </select>
+          value={accountId}
+          onChange={e => setAccountId(e.target.value)}
+          placeholder="Enter the account ID for this statement"
+        />
       </div>
       
       {/* File Dropzone */}
@@ -182,7 +160,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete, onError }) =>
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Uploading ({uploadProgress}%)
+              Uploading...
             </span>
           ) : (
             'Upload Statements'
