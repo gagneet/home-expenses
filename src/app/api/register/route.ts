@@ -1,14 +1,29 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { email, password, name } = body;
 
-    if (!email || !password) {
-      return new NextResponse('Email and password are required', { status: 400 });
+    if (!email || !password || !name) {
+      return new NextResponse('Missing name, email, or password', { status: 400 });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return new NextResponse('Invalid email format', { status: 400 });
+    }
+
+    // Validate password strength
+    if (password.length < 8) {
+      return new NextResponse('Password must be at least 8 characters long', { status: 400 });
+    }
+    // Example: require uppercase, lowercase, and numbers
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      return new NextResponse('Password must contain at least one uppercase letter, one lowercase letter, and one number', { status: 400 });
     }
 
     const exist = await prisma.user.findUnique({

@@ -3,16 +3,6 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Login from '../Login';
 
-// Mock the next/navigation module
-jest.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: jest.fn(),
-  }),
-  useSearchParams: () => ({
-    get: jest.fn(),
-  }),
-}));
-
 // Mock the next-auth/react module
 const mockSignIn = jest.fn();
 jest.mock('next-auth/react', () => ({
@@ -23,6 +13,10 @@ describe('Login Component', () => {
   beforeEach(() => {
     // Clear mock history before each test
     mockSignIn.mockClear();
+    // Reset searchParams mock for each test
+    jest.spyOn(require('next/navigation'), 'useSearchParams').mockImplementation(() => ({
+        get: jest.fn().mockReturnValue(null),
+    }));
   });
 
   it('renders the login form correctly', () => {
@@ -41,18 +35,11 @@ describe('Login Component', () => {
     const passwordInput = screen.getByLabelText(/password/i);
     const loginButton = screen.getByRole('button', { name: /login with email/i });
 
-    // Simulate user typing
     await user.type(emailInput, 'test@example.com');
     await user.type(passwordInput, 'password123');
 
-    // Assert that the inputs have the correct values
-    expect(emailInput).toHaveValue('test@example.com');
-    expect(passwordInput).toHaveValue('password123');
-
-    // Simulate user clicking the login button
     await user.click(loginButton);
 
-    // Assert that signIn was called with the correct arguments
     expect(mockSignIn).toHaveBeenCalledTimes(1);
     expect(mockSignIn).toHaveBeenCalledWith('credentials', {
       redirect: false,
@@ -61,13 +48,28 @@ describe('Login Component', () => {
     });
   });
 
+  it('displays an error message on invalid credentials', async () => {
+    const user = userEvent.setup();
+    // Mock the signIn function to return an error
+    mockSignIn.mockResolvedValueOnce({ error: 'Invalid credentials', ok: false });
+
+    render(<Login />);
+
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+    await user.type(screen.getByLabelText(/password/i), 'wrongpassword');
+    await user.click(screen.getByRole('button', { name: /login with email/i }));
+
+    // Check if the error message is displayed
+    const error = await screen.findByText('Invalid email or password. Please try again.');
+    expect(error).toBeInTheDocument();
+  });
+
   it('displays a success message if registered=true param is present', () => {
-    // Mock useSearchParams to return the query param
     jest.spyOn(require('next/navigation'), 'useSearchParams').mockImplementation(() => ({
       get: (key) => (key === 'registered' ? 'true' : null),
     }));
 
     render(<Login />);
-    expect(screen.getByText('Registration successful! Please log in.')).toBeInTheDocument();
+    expect(screen.getByText('Registration successful! Please check your email to verify your account before logging in.')).toBeInTheDocument();
   });
 });

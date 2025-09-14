@@ -31,20 +31,9 @@ const Register: React.FC = () => {
         return;
       }
 
-      // Step 2: If registration is successful, sign the user in
-      const result = await signIn('credentials', {
-        redirect: false,
-        email,
-        password,
-      });
-
-      if (result?.error) {
-        // This can happen if there's a problem with the authorize function
-        setError('Login failed after registration. Please try logging in manually.');
-      } else if (result?.ok) {
-        // Successful login, redirect to dashboard
-        router.push('/dashboard');
-      }
+      // Step 2: If registration is successful, redirect to the login page
+      // with a success message encouraging email verification.
+      router.push('/login?registered=true');
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
     }

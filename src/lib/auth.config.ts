@@ -4,11 +4,16 @@ import GitHub from "next-auth/providers/github"
 import Credentials from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import prisma from "@/lib/prisma"
-import bcrypt from 'bcrypt'
+import bcrypt from 'bcryptjs'
 
 export const authConfig = {
   adapter: PrismaAdapter(prisma),
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET ?? (() => {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('NEXTAUTH_SECRET environment variable is not set');
+    }
+    return 'fallback-secret-for-development';
+  })(),
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,

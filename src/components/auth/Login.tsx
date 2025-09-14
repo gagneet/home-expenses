@@ -15,7 +15,7 @@ const Login: React.FC = () => {
 
   useEffect(() => {
     if (searchParams.get('registered') === 'true') {
-      setSuccess('Registration successful! Please log in.');
+      setSuccess('Registration successful! Please check your email to verify your account before logging in.');
     }
   }, [searchParams]);
 
