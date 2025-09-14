@@ -57,7 +57,7 @@
     "@types/pg": "^8.11.5",
     "@types/pdf-parse": "^1.1.4",
     "@types/uuid": "^10.0.0",
-    "@types/cookie": "^0.6.0",
+    "@types/cookie": "^1.0.0",
     "@types/js-cookie": "^3.0.0"
   }
 }
