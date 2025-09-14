@@ -1,4 +1,5 @@
 import { ExpenseSummary, Transaction, UploadResult } from '../types';
+import Cookies from 'js-cookie';
 
 // Custom error types for better error handling in components
 export class ApiError extends Error {
@@ -34,6 +35,20 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json();
 }
 
+const getHeaders = (isFormData = false) => {
+  const headers: { [key: string]: string } = {};
+  const token = Cookies.get('token');
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
+  return { headers };
+};
+
 /**
  * Upload statement files to the server
  */
@@ -52,7 +67,7 @@ export const uploadStatements = async (
   const response = await fetch(`${API_URL}/statements/upload`, {
     method: 'POST',
     body: formData,
-    ...getAuthHeaders(),
+    ...getHeaders(true),
   });
 
   return handleResponse<UploadResult>(response);
@@ -70,16 +85,26 @@ export const fetchExpenseSummary = async (
   if (endDate) params.append('endDate', endDate);
 
   const response = await fetch(`${API_URL}/statements/summary?${params.toString()}`, {
-    ...getAuthHeaders(),
+    ...getHeaders(),
   });
 
   return handleResponse<ExpenseSummary>(response);
 };
 
 /**
+ * Fetch all transactions for the logged-in user
+ */
+export const fetchTransactions = async (): Promise<Transaction[]> => {
+  const response = await fetch(`${API_URL}/transactions`, {
+    ...getHeaders(),
+  });
+  return handleResponse<Transaction[]>(response);
+};
+
+/**
  * Fetch transactions with optional filters
  */
-export const fetchTransactions = async (
+export const fetchTransactionsWithFilters = async (
   startDate?: string,
   endDate?: string,
   category?: string | null,
@@ -94,7 +119,7 @@ export const fetchTransactions = async (
   params.append('offset', offset.toString());
 
   const response = await fetch(`${API_URL}/statements/transactions?${params.toString()}`, {
-    ...getAuthHeaders(),
+    ...getHeaders(),
   });
 
   return handleResponse<{ transactions: Transaction[]; pagination: { total: number; offset: number; limit: number } }>(response);
@@ -112,22 +137,10 @@ export const fetchMonthlyTrends = async (
   if (category) params.append('category', category);
 
   const response = await fetch(`${API_URL}/statements/trends?${params.toString()}`, {
-    ...getAuthHeaders(),
+    ...getHeaders(),
   });
 
   return handleResponse<any[]>(response);
-};
-
-// Helper to get auth headers
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
-  if (!token) return {};
-  return {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  };
 };
 
 // =============================================
@@ -145,7 +158,7 @@ export const createAccount = async (accountData: NewAccountData) => {
   const response = await fetch(`${API_URL}/accounts/create`, {
     method: 'POST',
     body: JSON.stringify(accountData),
-    ...getAuthHeaders(),
+    ...getHeaders(),
   });
   return handleResponse(response);
 };
@@ -160,7 +173,7 @@ export const processGst = async (gstData: GstProcessData) => {
   const response = await fetch(`${API_URL}/transactions/process-gst`, {
     method: 'POST',
     body: JSON.stringify(gstData),
-    ...getAuthHeaders(),
+    ...getHeaders(),
   });
   return handleResponse(response);
 };
@@ -177,18 +190,26 @@ export const processDividend = async (dividendData: DividendProcessData) => {
   const response = await fetch(`${API_URL}/investments/dividend`, {
     method: 'POST',
     body: JSON.stringify(dividendData),
-    ...getAuthHeaders(),
+    ...getHeaders(),
   });
   return handleResponse(response);
 };
+
+export const fetchAccounts = async () => {
+  const response = await fetch(`${API_URL}/accounts`, {
+    ...getHeaders(),
+  });
+  return handleResponse<any[]>(response);
+}
 
 // Export a combined API
 export default {
   uploadStatements,
   fetchExpenseSummary,
   fetchTransactions,
-  fetchMonthlyTrends,
+  fetchTransactionsWithFilters,
   createAccount,
   processGst,
   processDividend,
+  fetchAccounts,
 };

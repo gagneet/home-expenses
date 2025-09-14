@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { createUser, findUserByEmail } from '../../../../lib/server/models/user';
 import { User } from '../../../../lib/server/types/user';
 import { v4 as uuidv4 } from 'uuid';
+import { validatePassword } from '../../../../lib/server/utils';
 
 const generateErrorId = () => uuidv4();
 
@@ -11,6 +12,11 @@ export async function POST(request: Request) {
 
   if (!email || !password) {
     return NextResponse.json({ message: 'Email and password are required' }, { status: 400 });
+  }
+
+  const passwordValidation = validatePassword(password);
+  if (!passwordValidation.valid) {
+    return NextResponse.json({ message: passwordValidation.message }, { status: 400 });
   }
 
   try {

@@ -9,6 +9,21 @@ export interface BankOption {
   logo: string;
 }
 
+export interface Account {
+  id: string;
+  user_id: string;
+  institution_id?: string;
+  account_type_id: string;
+  account_name: string;
+  account_number: string;
+  bsb?: string;
+  currency: string;
+  opening_balance: number;
+  current_balance: number;
+  created_at: string;
+  updated_at: string;
+}
+
 /**
  * Transaction category
  */

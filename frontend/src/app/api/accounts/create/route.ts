@@ -1,17 +1,25 @@
 import { NextResponse } from 'next/server';
-import { withAuth, AuthenticatedRequest } from '../../../../lib/server/auth';
 import { createAccount } from '../../../../lib/server/models/account';
 import { AustralianBankingUtils } from '../../../../lib/server/lib/australian-banking';
 import { NewAccount } from '../../../../lib/server/types/account';
+import { cookies } from 'next/headers';
+import jwt from 'jsonwebtoken';
 
-async function handler(req: AuthenticatedRequest) {
+const JWT_SECRET = process.env.JWT_SECRET;
+
+export async function POST(req: Request) {
   try {
-    const { accountName, accountNumber, bsb, accountType } = await req.json();
-    const userId = req.user?.userId;
-
-    if (!userId) {
+    const token = cookies().get('token')?.value;
+    if (!token) {
       return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
     }
+    if (!JWT_SECRET) {
+      throw new Error('JWT_SECRET environment variable must be set');
+    }
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email: string };
+    const userId = decoded.userId;
+
+    const { accountName, accountNumber, bsb, accountType } = await req.json();
 
     // Validate account type
     const validAccountTypes = ['checking', 'savings', 'credit_card', 'investment', 'superannuation'];
@@ -64,8 +72,9 @@ async function handler(req: AuthenticatedRequest) {
     );
   } catch (error) {
     console.error('Account creation error:', error);
+    if (error instanceof jwt.JsonWebTokenError) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
     return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
   }
 }
-
-export const POST = withAuth(handler);

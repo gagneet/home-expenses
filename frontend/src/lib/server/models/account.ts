@@ -92,3 +92,11 @@ export const createAccount = async (accountData: NewAccount): Promise<Account> =
     client.release();
   }
 };
+
+export const getAccountsByUserId = async (userId: string): Promise<Account[]> => {
+  const result = await pool.query(
+    'SELECT * FROM accounts WHERE user_id = $1 ORDER BY account_name',
+    [userId]
+  );
+  return result.rows;
+};

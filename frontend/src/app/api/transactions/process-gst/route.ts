@@ -1,10 +1,22 @@
 import { NextResponse } from 'next/server';
-import { withAuth, AuthenticatedRequest } from '../../../../lib/server/auth';
 import { GSTCalculator } from '../../../../lib/server/lib/gst-calculator';
 import { updateTransactionGstDetails } from '../../../../lib/server/models/transaction';
+import { cookies } from 'next/headers';
+import jwt from 'jsonwebtoken';
 
-async function handler(req: AuthenticatedRequest) {
+const JWT_SECRET = process.env.JWT_SECRET;
+
+export async function POST(req: Request) {
   try {
+    const token = cookies().get('token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+    }
+    if (!JWT_SECRET) {
+      throw new Error('JWT_SECRET environment variable must be set');
+    }
+    jwt.verify(token, JWT_SECRET) as { userId: string; email: string };
+
     const { transactionId, amount, gstTreatment } = await req.json();
 
     if (!transactionId || amount === undefined || !gstTreatment) {
@@ -33,6 +45,9 @@ async function handler(req: AuthenticatedRequest) {
     );
   } catch (error) {
     console.error('GST processing error:', error);
+    if (error instanceof jwt.JsonWebTokenError) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
     if (error instanceof Error) {
       return NextResponse.json(
         { error: 'Failed to process GST calculation', details: error.message },
@@ -46,5 +61,3 @@ async function handler(req: AuthenticatedRequest) {
     }
   }
 }
-
-export const POST = withAuth(handler);

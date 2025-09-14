@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 interface LoginProps {
-  onLogin: (token: string) => void;
+  onLogin: () => void;
   onShowRegister: () => void;
 }
 
@@ -12,6 +12,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onShowRegister }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     try {
       const response = await fetch(`/api/auth/login`, {
         method: 'POST',
@@ -21,12 +22,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, onShowRegister }) => {
         body: JSON.stringify({ email, password }),
       });
       if (!response.ok) {
-        throw new Error('Invalid email or password');
+        const data = await response.json();
+        setError(data.message || 'Invalid email or password');
+        return;
       }
-      const data = await response.json();
-      onLogin(data.token);
+      onLogin();
     } catch (err) {
-      setError('Invalid email or password');
+      setError('An unexpected error occurred. Please try again.');
     }
   };
 
