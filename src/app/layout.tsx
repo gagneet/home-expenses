@@ -11,7 +11,7 @@ function SiteLayout({ children }: { children: React.ReactNode }) {
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-800">
-            <Link href="/">Financial Analyzer</Link>
+            <Link href="/public">Financial Analyzer</Link>
           </h1>
           {isAuthenticated && (
             <div className="flex items-center space-x-2">
