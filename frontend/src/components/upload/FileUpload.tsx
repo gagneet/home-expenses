@@ -116,7 +116,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete, onError }) =>
           ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'}`}
       >
         <input {...getInputProps()} />
-        <p>Drag 'n' drop some files here, or click to select files</p>
+        <p>Drag and drop some files here, or click to select files</p>
         <p className="text-xs text-gray-500">
             Only PDF files are allowed
         </p>
