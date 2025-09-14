@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
-import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000';
 
 interface LoginProps {
-  onLogin: (token: string) => void;
+  onLogin: () => void;
   onShowRegister: () => void;
 }
 
@@ -15,11 +12,23 @@ const Login: React.FC<LoginProps> = ({ onLogin, onShowRegister }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     try {
-      const response = await axios.post(`${API_URL}/api/auth/login`, { email, password });
-      onLogin(response.data.token);
+      const response = await fetch(`/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.message || 'Invalid email or password');
+        return;
+      }
+      onLogin();
     } catch (err) {
-      setError('Invalid email or password');
+      setError('An unexpected error occurred. Please try again.');
     }
   };
 

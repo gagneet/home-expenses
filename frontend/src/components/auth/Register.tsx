@@ -1,7 +1,4 @@
 import React, { useState } from 'react';
-import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000';
 
 interface RegisterProps {
   onRegister: () => void;
@@ -19,7 +16,16 @@ const Register: React.FC<RegisterProps> = ({ onRegister, onShowLogin }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post(`${API_URL}/api/auth/register`, { email, password, username, first_name: firstName, last_name: lastName });
+      const response = await fetch(`/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password, username, first_name: firstName, last_name: lastName }),
+      });
+      if (!response.ok) {
+        throw new Error('Error registering user');
+      }
       onRegister();
     } catch (err) {
       setError('Error registering user');

@@ -8,12 +8,11 @@ import TransactionList from './TransactionList';
 import api from '../../services/api';
 
 interface DashboardProps {
-  uploadDate?: string;
   transactions: Transaction[];
 }
 
 // Simplified version of the Dashboard component
-const Dashboard: React.FC<DashboardProps> = ({ uploadDate, transactions }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
   const [expenseSummary, setExpenseSummary] = useState<ExpenseSummary>({
     totalIncome: 0,
     totalExpenses: 0,
