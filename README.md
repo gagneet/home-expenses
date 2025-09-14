@@ -2,7 +2,7 @@
 
 A web application for calculating all the income and expenses made for the past year, based on bank statements.
 
-This is a [Next.js](httpshttps://nextjs.org) project.
+This is a [Next.js](https://nextjs.org) project.
 
 ## Getting Started
 
