@@ -34,9 +34,12 @@ export async function POST(request: Request) {
     const errorId = generateErrorId();
     console.error(`Error registering user (ID: ${errorId}):`, {
       email,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error
+        ? { name: error.name, message: error.message, stack: error.stack }
+        : { message: String(error) },
       timestamp: new Date().toISOString()
     });
+    const message = error instanceof Error ? error.message : 'An unknown error occurred.';
     return NextResponse.json({ message: 'Error registering user', error_id: errorId }, { status: 500 });
   }
 }
